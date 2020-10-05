@@ -66,17 +66,15 @@ int main(int argc, char* argv[])
 	{
 	  finish = WaitForSingleObject(pi[i].hProcess, INFINITE);
 	  if (finish == WAIT_OBJECT_0) {
-	  	//printf("Process %Lu is finished\n",pi[i].dwProcessId);
 	  	GetExitCodeProcess(pi[i].hProcess, &result);
 	  	printf("========= Process %lu finished by exit code %d =========\n",pi[i].dwProcessId,result);
 	  	total += result;
 	  } else {
-	  	// Close process and thread handles.
 	  	CloseHandle(pi[i].hProcess);
 	  	CloseHandle(pi[i].hThread);
 	  	TerminateProcess(pi[i].hProcess, 0);
 	  }
 	}
-	printf("%d File(s) processed with %d total changes.\n", argc-2, total);
+	printf("%d File(s) processed with %d total changes.\n", argc - 2, total);
 	return 0;
 }
