@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
 		}
 		else {
 			printf("=========   Error    =========\n");
-			printf("CreateProcess failed with code %Lu.\n", GetLastError());
+			printf( "CreateProcess failed with code %Lu.\n", GetLastError());
 			exit(-2);
 		}
 	}
