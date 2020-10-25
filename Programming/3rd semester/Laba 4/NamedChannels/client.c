@@ -1,6 +1,5 @@
 #include <windows.h>
 #include <stdio.h>
-#include <conio.h>
 
 // Maximum size of strings in the app
 #define BUF_SIZE    256
