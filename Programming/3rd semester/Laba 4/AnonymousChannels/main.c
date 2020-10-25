@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
-#include <io.h>
 
 #define STR_SIZE 256
 #define CHILD_NAME "child.exe"
@@ -24,7 +23,7 @@ int main(int argc, LPTSTR argv[])
             command[STR_SIZE] = {0};
 
     if (argc < 2) {
-        printf("[SERVER] No input files");
+        printf("[SERVER] No input files\n");
         exit(-1);
     }
 
