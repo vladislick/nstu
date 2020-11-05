@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 
     // Создаём объекты
     window = new QWidget;
-    scene  = new QGraphicsScene(0, 0, 1200, 1000);
+    scene  = new QGraphicsScene(0, 0, 700, 700);
     view   = new QGraphicsView(scene);
     layout = new QVBoxLayout;
     pen    = new QPen();
