@@ -15,36 +15,36 @@ HINSTANCE hLib;
 int (*bufferProcessing)(CHAR*, int);
 
 int main() {
-	// Pipe descriptor
-	HANDLE hPipe;
+    // Pipe descriptor
+    HANDLE hPipe;
     // Идентификаторы каналов Mailslot
-	HANDLE hMailslot1, hMailslot2;
+    HANDLE hMailslot1, hMailslot2;
     // Размер сообщения в байтах
-	DWORD  cbMessages;
-		// Количество сообщений в канале Mailslot2
-	DWORD  cbMsgNumber = 0;
-	// Mailshot name
-	LPSTR  mailslotName1 = "\\\\.\\mailslot\\$Channel1$";
-	// Mailshot name
-	LPSTR  mailslotName2 = "\\\\.\\mailslot\\$Channel2$";
-	// Number of read/written bytes from the pipe
-	DWORD  cbRead, cbWritten;
+    DWORD  cbMessages;
+        // Количество сообщений в канале Mailslot2
+    DWORD  cbMsgNumber = 0;
+    // Mailshot name
+    LPSTR  mailslotName1 = "\\\\.\\mailslot\\$Channel1$";
+    // Mailshot name
+    LPSTR  mailslotName2 = "\\\\.\\mailslot\\$Channel2$";
+    // Number of read/written bytes from the pipe
+    DWORD  cbRead, cbWritten;
     BOOL   fReturnCode;
-	// File descriptors (hIn - input file, hOut - output file)
+    // File descriptors (hIn - input file, hOut - output file)
     HANDLE hIn, hOut; 
     // Numbers of read/written bytes
     DWORD nIn, nOut;
     // Buffer for read/write the files
     CHAR Buffer[BUF_SIZE];
     // Message from server app received by the pipe
-	char    input[BUF_SIZE] = { 0 };
-	// Name of input file
+    char    input[BUF_SIZE] = { 0 };
+    // Name of input file
     char    fileName[BUF_SIZE] = { 0 };
     // Name for output file
     char    fileOutName[BUF_SIZE] = { 0 };
-	// Maximum of possible changes in file
+    // Maximum of possible changes in file
     // Message for child to say filename and maximum of changes
-	char message[BUF_SIZE] = { 0 };
+    char message[BUF_SIZE] = { 0 };
     char out[BUF_SIZE * 4] = { 0 };
 
     int     maxChanges = 0;
@@ -76,10 +76,10 @@ int main() {
     // Try to connect to the server's mailsolt
     hMailslot2 = CreateFile(mailslotName2, GENERIC_WRITE,FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (hMailslot2 == INVALID_HANDLE_VALUE)
-	{
-		fprintf(stdout, "\n[CHILD] Connection to the server failed (ERROR #%ld)\n", GetLastError());
-		return -11;
-	}
+    {
+        fprintf(stdout, "\n[CHILD] Connection to the server failed (ERROR #%ld)\n", GetLastError());
+        return -11;
+    }
 
     // Read data from the server's mailslot
     ZeroMemory(input, BUF_SIZE);
@@ -89,24 +89,24 @@ int main() {
     hLib = LoadLibrary(libName);
     if (hLib == NULL) {
         sprintf(message, "[CHILD PID:%Lu] Cannot load library <<%s>>.\n", GetCurrentProcessId(), libName);
-		strcat(out, message);
+        strcat(out, message);
         WriteFile(hMailslot2, out, strlen(out) + 1, &cbWritten, NULL);
         CloseHandle(hMailslot1);
         return(-2);
-	}
+    }
 
     sprintf(message, "[CHILD PID:%Lu] Library <<%s>> is loaded successfully.\n", GetCurrentProcessId(), libName);
     strcat(out, message);
 
     // Check the function in library
-	bufferProcessing = (int(*)(CHAR*, int))GetProcAddress(hLib, funcName);
-	if (bufferProcessing == NULL) {
-		sprintf(message, "[CHILD PID:%Lu] Cannot find function <<%s>> in library <<%s>>.\n", GetCurrentProcessId(), funcName, libName);
+    bufferProcessing = (int(*)(CHAR*, int))GetProcAddress(hLib, funcName);
+    if (bufferProcessing == NULL) {
+        sprintf(message, "[CHILD PID:%Lu] Cannot find function <<%s>> in library <<%s>>.\n", GetCurrentProcessId(), funcName, libName);
         strcat(out, message);
         WriteFile(hMailslot2, out, strlen(out) + 1, &cbWritten, NULL);
         CloseHandle(hMailslot1);
         return(-3);
-	}
+    }
 
     sprintf(message, "[CHILD PID:%Lu] Function <<%s>> in the library found.\n", GetCurrentProcessId(), funcName, libName);
     strcat(out, message);
