@@ -22,13 +22,14 @@ int main() {
     // Размер сообщения в байтах
 	DWORD  cbMessages;
 		// Количество сообщений в канале Mailslot2
-	DWORD  cbMsgNumber;
+	DWORD  cbMsgNumber = 0;
 	// Mailshot name
 	LPSTR  mailslotName1 = "\\\\.\\mailslot\\$Channel1$";
 	// Mailshot name
 	LPSTR  mailslotName2 = "\\\\.\\mailslot\\$Channel2$";
 	// Number of read/written bytes from the pipe
 	DWORD  cbRead, cbWritten;
+    BOOL   fReturnCode;
 	// File descriptors (hIn - input file, hOut - output file)
     HANDLE hIn, hOut; 
     // Numbers of read/written bytes
@@ -44,6 +45,7 @@ int main() {
 	// Maximum of possible changes in file
     // Message for child to say filename and maximum of changes
 	char message[BUF_SIZE] = { 0 };
+    char out[BUF_SIZE * 4] = { 0 };
 
     int     maxChanges = 0;
     // Current number of changes in file
@@ -52,43 +54,63 @@ int main() {
     char    libName[] = LIB_NAME,
             funcName[] = FUNC_NAME;
 
+    // Clear all bytes in the 'out' variable
+    ZeroMemory(out, BUF_SIZE * 4); 
+
+    // Try to create a mailslot number 1 (to read data from server)
     hMailslot1 = CreateMailslot(mailslotName1, 0, MAILSLOT_WAIT_FOREVER, NULL);
     if (hMailslot1 == INVALID_HANDLE_VALUE)
     {
-        fprintf(stdout, "\n[CHILD] Create mailslot 1 failed (ERROR #%ld)\n", GetLastError());
+        fprintf(stdout, "\n[CHILD] Create mailslot failed (ERROR #%ld)\n", GetLastError());
         CloseHandle(hMailslot1);
         _getch();
         return -10;
     }
 
+    // Wait for server while it will send data about the file to proccess
+    while (!cbMsgNumber) {
+        fReturnCode = GetMailslotInfo(hMailslot1, NULL, &cbMessages, &cbMsgNumber, NULL);
+        if (!fReturnCode) fprintf(stdout, "[CHILD] GetMailslotInfo for reply (ERROR #%ld)\n", GetLastError());
+    }
+
+    // Try to connect to the server's mailsolt
     hMailslot2 = CreateFile(mailslotName2, GENERIC_WRITE,FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (hMailslot2 == INVALID_HANDLE_VALUE)
 	{
-		fprintf(stdout, "\n[CHILD] Create mailslot 2 failed (ERROR #%ld)\n", GetLastError());
-		_getch();
+		fprintf(stdout, "\n[CHILD] Connection to the server failed (ERROR #%ld)\n", GetLastError());
 		return -11;
 	}
 
+    // Read data from the server's mailslot
     ZeroMemory(input, BUF_SIZE);
     ReadFile(hMailslot1, input, BUF_SIZE, &cbRead, NULL);
 
     // Check the library
     hLib = LoadLibrary(libName);
     if (hLib == NULL) {
-		printf("[CHILD PID:%Lu] Cannot load library <<%s>>.\n", GetCurrentProcessId(), libName);
+        sprintf(message, "[CHILD PID:%Lu] Cannot load library <<%s>>.\n", GetCurrentProcessId(), libName);
+		strcat(out, message);
+        WriteFile(hMailslot2, out, strlen(out) + 1, &cbWritten, NULL);
+        CloseHandle(hMailslot1);
         return(-2);
 	}
-    printf("[CHILD PID:%Lu] Library <<%s>> is loaded successfully.\n", GetCurrentProcessId(), libName);
+
+    sprintf(message, "[CHILD PID:%Lu] Library <<%s>> is loaded successfully.\n", GetCurrentProcessId(), libName);
+    strcat(out, message);
 
     // Check the function in library
 	bufferProcessing = (int(*)(CHAR*, int))GetProcAddress(hLib, funcName);
 	if (bufferProcessing == NULL) {
-		printf("[CHILD PID:%Lu] Cannot find function <<%s>> in library <<%s>>.\n", GetCurrentProcessId(), funcName, libName);
+		sprintf(message, "[CHILD PID:%Lu] Cannot find function <<%s>> in library <<%s>>.\n", GetCurrentProcessId(), funcName, libName);
+        strcat(out, message);
+        WriteFile(hMailslot2, out, strlen(out) + 1, &cbWritten, NULL);
         CloseHandle(hMailslot1);
         return(-3);
 	}
-    printf("[CHILD PID:%Lu] Function <<%s>> in the library found.\n", GetCurrentProcessId(), funcName, libName);
-    
+
+    sprintf(message, "[CHILD PID:%Lu] Function <<%s>> in the library found.\n", GetCurrentProcessId(), funcName, libName);
+    strcat(out, message);
+
     // Get filename and maximum of changes
     strcpy(fileName, input);
     char isFile = 1;
@@ -106,15 +128,22 @@ int main() {
 
     // Сheck the recognized data
     if (!strcmp(fileName, "")) {
-        printf("[CHILD PID:%Lu] Incorrect data from mailshot.\n", GetCurrentProcessId());
+        sprintf(message, "[CHILD PID:%Lu] Incorrect data from mailshot.\n", GetCurrentProcessId());
+        strcat(out, message);
+        WriteFile(hMailslot2, out, strlen(out) + 1, &cbWritten, NULL);
         CloseHandle(hMailslot1);
         return(-4);
-    } else printf("[CHILD PID:%Lu] Read data from mailshot <<%s>>.\n", GetCurrentProcessId(), input);
+    } else {
+        sprintf(message, "[CHILD PID:%Lu] Read data from mailslot <<%s>>.\n", GetCurrentProcessId(), input);
+        strcat(out, message);
+    }
 
     // Try to open input file (READ MODE)
     hIn = CreateFile(fileName, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL); 
     if (hIn == INVALID_HANDLE_VALUE) {
-        printf("[CHILD PID:%Lu] Cannot open input file <<%s>> (ERROR #%Lu).\n", GetCurrentProcessId(),  fileName, GetLastError());
+        sprintf(message, "[CHILD PID:%Lu] Cannot open input file <<%s>> (ERROR #%Lu).\n", GetCurrentProcessId(),  fileName, GetLastError());
+        strcat(out, message);
+        WriteFile(hMailslot2, out, strlen(out) + 1, &cbWritten, NULL);
         CloseHandle(hMailslot1);
         return(-4);
     } 
@@ -130,7 +159,9 @@ int main() {
     // Try to open output file (WRITE MODE)
     hOut = CreateFile (fileOutName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); 
     if(hOut == INVALID_HANDLE_VALUE) {
-        printf("[CHILD PID:%Lu] Cannot open output file <<%s>> (ERROR #%Lu).\n", GetCurrentProcessId(), fileOutName, GetLastError());
+        sprintf(message, "[CHILD PID:%Lu] Cannot open output file <<%s>> (ERROR #%Lu).\n", GetCurrentProcessId(), fileOutName, GetLastError());
+        strcat(out, message);
+        WriteFile(hMailslot2, out, strlen(out) + 1, &cbWritten, NULL);
         return(-5);
     }
 
@@ -140,16 +171,18 @@ int main() {
         changes = (*bufferProcessing)(Buffer, maxChanges);
         WriteFile(hOut, Buffer, nIn, &nOut, NULL); 
         if (nIn != nOut) {
-            printf("[CHILD PID:%Lu] Writing file error %x.\n", GetCurrentProcessId(), GetLastError());
+            sprintf(message, "[CHILD PID:%Lu] Writing file error %x.\n", GetCurrentProcessId(), GetLastError());
+            strcat(out, message);
+            WriteFile(hMailslot2, out, strlen(out) + 1, &cbWritten, NULL);
             return(-6);
         }
         ZeroMemory(Buffer, BUF_SIZE);
     }
-    printf("[CHILD PID:%Lu] File proccess done. All changes written in file <<%s>>.\n", GetCurrentProcessId(),fileOutName);
+    
+    sprintf(message, "[CHILD PID:%Lu] File proccess done. All changes written in file <<%s>>.\n", GetCurrentProcessId(),fileOutName);
+    strcat(out, message);
 
-    ZeroMemory(message, BUF_SIZE);
-    sprintf(message, "Hello");
-    if (!WriteFile(hMailslot2, message, strlen(message) + 1, &cbWritten, NULL)) printf("[CHILD PID:%Lu] Writing message error %x.\n", GetCurrentProcessId(), GetLastError());
+    if (!WriteFile(hMailslot2, out, strlen(out) + 1, &cbWritten, NULL)) printf("[CHILD PID:%Lu] Writing message error %x.\n", GetCurrentProcessId(), GetLastError());
 
     // Close all handles and return the number of changes in file
     FreeLibrary(hLib);

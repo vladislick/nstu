@@ -98,16 +98,15 @@ int main()
         	}
 
             // Try to create mailslot 1
-            printf("[SERVER] Trying to create a mailslot <<%s>> ......... ", mailslotName1);
-			hMailslot1 = CreateFile(mailslotName1, GENERIC_WRITE,FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-            if (hMailslot1 == INVALID_HANDLE_VALUE)
+            printf("[SERVER] Trying to connect to the client's mailslot <<%s>> ......... ", mailslotName1);
+			Sleep(200);
+			hMailslot1 = CreateFile(mailslotName1, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+			if (hMailslot1 == INVALID_HANDLE_VALUE)
             {
-                fprintf(stdout, "\n[SERVER] Create mailslot 1 failed (ERROR #%ld)\n", GetLastError());
-                CloseHandle(hMailslot1);
-                _getch();
-                return -1;
+				 fprintf(stdout, "\n[SERVER] Create mailslot 1 failed (ERROR #%ld)\n", GetLastError());
+				 return -1;
             }
-            printf("Mailslot created successfully.\n");
+            printf("Mailslot connected successfully.\n");
 			
             ZeroMemory(message, BUF_SIZE);
             strcpy(message, user);
@@ -117,28 +116,28 @@ int main()
             // Send filename to child process
             if (!WriteFile(hMailslot1, message, strlen(message) + 1, &cbWritten, NULL)) break;
             printf("[SERVER] Sent data to the child: <<%s>> (CHILD PID #%lu).\n", message, PI.dwProcessId);
+            
+			cbMsgNumber = 0;
+            while (!cbMsgNumber) {
+				fReturnCode = GetMailslotInfo(hMailslot2, NULL, &cbMessages, &cbMsgNumber, NULL);
+		    	if (!fReturnCode)
+		    	{
+			    	fprintf(stdout, "[SERVER] GetMailslotInfo for reply (ERROR #%ld)\n", GetLastError());
+			    	_getch();
+			    	break;
+		    	}
+                ZeroMemory(message, BUF_SIZE);
+			    if (cbMsgNumber > 0 && ReadFile(hMailslot2, message, BUF_SIZE, &cbRead, NULL)) {
+				    // Выводим принятую строку на консоль 
+				    printf("[SERVER] ==================== Received message ====================\n%s", message);
+                    printf("[SERVER] =================== End of the message ===================\n");
+			    }
+		    }
 
-            // Waiting for the completion of the child process
+			// Waiting for the completion of the child process
        		WaitForSingleObject(PI.hProcess, INFINITE);
 			GetExitCodeProcess(PI.hProcess, &exitCode);
 			CloseHandle(PI.hProcess);
-
-            fReturnCode = GetMailslotInfo(hMailslot2, NULL, &cbMessages, &cbMsgNumber, NULL);
-		    if (!fReturnCode)
-		    {
-			    fprintf(stdout, "[SERVER] GetMailslotInfo for reply (ERROR #%ld)\n", GetLastError());
-			    _getch();
-			    break;
-		    }
-
-            while (cbMsgNumber) {
-                ZeroMemory(message, BUF_SIZE);
-			    if (ReadFile(hMailslot2, message, BUF_SIZE, &cbRead, NULL)) {
-				    // Выводим принятую строку на консоль 
-				    printf("Received ========================================\n%s\n", message);
-                    printf("End of the message ========================================");
-			    }
-		    }
 
 			// Checking the result of the child process
 			if (exitCode >= 0)
