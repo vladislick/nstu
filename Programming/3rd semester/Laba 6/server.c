@@ -34,10 +34,10 @@ int main()
     // Library name and function in the library name, just for fun
     char    libName[] = LIB_NAME,
             funcName[] = FUNC_NAME;
-	DWORD dwRetCode;
+    DWORD dwRetCode;
     char message[BUF_SIZE] = { 0 };
     char out[BUF_SIZE * 4] = { 0 };
-	
+    
     DWORD  cbWritten;
     // Buffer for read/write the files
     CHAR Buffer[BUF_SIZE];
@@ -57,54 +57,54 @@ int main()
     int     errorCode = 0;
 
 
-	printf("Hi!\nStarting all systems...\n");
+    printf("Hi!\nStarting all systems...\n");
     // Create this semaphore as sending "blink"
     hSemSend = CreateSemaphore(NULL, 0, 1, lpSemSendName);
     // Open this semaphore as reciving "blink"
-	hSemRecv = CreateSemaphore(NULL, 0, 1, lpSemRecvName); 
-	if (hSemSend == NULL || hSemRecv == NULL)
-		printf("[SYSTEM ERROR #%d] Cannot create recv/send semaphore.\n", GetLastError());
-	
+    hSemRecv = CreateSemaphore(NULL, 0, 1, lpSemRecvName); 
+    if (hSemSend == NULL || hSemRecv == NULL)
+        printf("[SYSTEM ERROR #%d] Cannot create recv/send semaphore.\n", GetLastError());
+    
     if (GetLastError() == ERROR_ALREADY_EXISTS)
-		printf("It seem like other server application is running.\n");
+        printf("It seem like other server application is running.\n");
     // Try to create this semaphore as signal that we are running down
-	hSemTermination = CreateSemaphore(NULL,	0, 1, lpSemTerminationName);
-	if (hSemTermination == NULL)
-		printf("[SYSTEM ERROR #%d] Cannot create termination semaphore.\n", GetLastError());
-	// Try to create mapping file
-	hFileMapping = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 100, lpFileShareName);
-	if (hFileMapping == NULL)
-		printf("[SYSTEM ERROR #%d] Cannot create mapping file.\n", GetLastError());
+    hSemTermination = CreateSemaphore(NULL,	0, 1, lpSemTerminationName);
+    if (hSemTermination == NULL)
+        printf("[SYSTEM ERROR #%d] Cannot create termination semaphore.\n", GetLastError());
+    // Try to create mapping file
+    hFileMapping = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 100, lpFileShareName);
+    if (hFileMapping == NULL)
+        printf("[SYSTEM ERROR #%d] Cannot create mapping file.\n", GetLastError());
     // Try to view mapping file 
-	lpFileMap = MapViewOfFile(hFileMapping, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
-	if (lpFileMap == 0)
-		printf("[SYSTEM ERROR #%d] Cannot view mapping file.\n", GetLastError());
+    lpFileMap = MapViewOfFile(hFileMapping, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
+    if (lpFileMap == 0)
+        printf("[SYSTEM ERROR #%d] Cannot view mapping file.\n", GetLastError());
     // Put down the semaphores into an array for object waiting function
-	hSems[0] = hSemTermination;
-	hSems[1] = hSemSend;
+    hSems[0] = hSemTermination;
+    hSems[1] = hSemSend;
 
     if (!GetLastError()) 
         printf("All systems started correctly.\n");
     else
         printf("Some systems did not started correctly.\n");
     
-	while (TRUE)
-	{
+    while (TRUE)
+    {
         fprintf(stdout, "\n> Waiting for a client... \n", GetLastError());
-		dwRetCode = WaitForMultipleObjects(2, hSems, FALSE, INFINITE);
-		if (dwRetCode == WAIT_ABANDONED_0 ||
-			dwRetCode == WAIT_ABANDONED_0 + 1 || dwRetCode == WAIT_OBJECT_0 || dwRetCode == WAIT_FAILED)
-			break;
-		else
-		{
+        dwRetCode = WaitForMultipleObjects(2, hSems, FALSE, INFINITE);
+        if (dwRetCode == WAIT_ABANDONED_0 ||
+            dwRetCode == WAIT_ABANDONED_0 + 1 || dwRetCode == WAIT_OBJECT_0 || dwRetCode == WAIT_FAILED)
+            break;
+        else
+        {
             // Clear errors
             errorCode = 0;
             // Check received data
             ZeroMemory(out, BUF_SIZE * 4);
             ZeroMemory(message, BUF_SIZE);
             strcpy(input, (LPSTR)lpFileMap);
-			printf("===> Received message: <<%s>>.\n", input); 
-			
+            printf("===> Received message: <<%s>>.\n", input); 
+            
             // Check the library
             hLib = LoadLibrary(libName);
             if (hLib == NULL && errorCode == 0) {
@@ -202,16 +202,16 @@ int main()
             CloseHandle(hIn); 
             CloseHandle(hOut);
 
-			// Let the client to read
-			ReleaseSemaphore(hSemRecv, 1, NULL);
-		}
-	}
+            // Let the client to read
+            ReleaseSemaphore(hSemRecv, 1, NULL);
+        }
+    }
     // Massive leaving actions
-	CloseHandle(hSemSend);
-	CloseHandle(hSemRecv);
-	CloseHandle(hSemTermination);
-	UnmapViewOfFile(lpFileMap);
-	CloseHandle(hFileMapping);
-	return 0;
+    CloseHandle(hSemSend);
+    CloseHandle(hSemRecv);
+    CloseHandle(hSemTermination);
+    UnmapViewOfFile(lpFileMap);
+    CloseHandle(hFileMapping);
+    return 0;
 }
 
