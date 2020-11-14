@@ -17,8 +17,8 @@ HANDLE hMutex;
 struct fileData
 {
     int     index;
-	char    file[80];
-	int     max;
+    char    file[80];
+    int     max;
 } data[threads];
 // Function prototype from the library
 int (*bufferProcessing)(CHAR*, int);
@@ -37,14 +37,14 @@ DWORD WINAPI func(int *num)
             funcName[] = FUNC_NAME,
             Buffer[BUF_SIZE];
     
-	int i = *num,
+    int i = *num,
         changes = 0,
         maxChanges = data[i].max;
 
-	printf("[Thread #%d] I'm waiting for the mutex...\n", i);
-	WaitForSingleObject(hMutex, INFINITE);
-	printf("[Thread #%d] I just catch the mutex! I start processing the file \"%s\".\n", i, data[i].file);
-		
+    printf("[Thread #%d] I'm waiting for the mutex...\n", i);
+    WaitForSingleObject(hMutex, INFINITE);
+    printf("[Thread #%d] I just catch the mutex! I start processing the file \"%s\".\n", i, data[i].file);
+        
     // Check the library
     hLib = LoadLibrary(libName);
     if (hLib == NULL) {
@@ -100,72 +100,72 @@ DWORD WINAPI func(int *num)
 int main(int argc, char* argv[])
 {
     // Thread descriptors
-	HANDLE  hThreads[threads];
+    HANDLE  hThreads[threads];
     // Thread result codes
-	DWORD   res[threads];
+    DWORD   res[threads];
     // The maximum of changes
     int MAXCHANGES = 99999;
 
     // Check the arguments
-	if (argc < 3)
-	{
-		printf("[MAIN] Usage: main.exe filename1 filename2 ... max_of_changes");
-		exit(-1);
-	}
+    if (argc < 3)
+    {
+        printf("[MAIN] Usage: main.exe filename1 filename2 ... max_of_changes");
+        exit(-1);
+    }
 
     // Check if user say the maximum of changes
     if (isdigit(argv[argc - 1][0])) MAXCHANGES = atoi(argv[argc - 1]); 
-	// Create a 'stop' mutex
-	hMutex = CreateMutex(NULL, FALSE, NULL);
-	// Capture the mutex (to hold the threads)
-	WaitForSingleObject(hMutex, INFINITE);
+    // Create a 'stop' mutex
+    hMutex = CreateMutex(NULL, FALSE, NULL);
+    // Capture the mutex (to hold the threads)
+    WaitForSingleObject(hMutex, INFINITE);
     
     // Create threads and hold them by the mutex
-	for (int i = 0; i < argc - 1; i++)
-	{
-		// Copy data
+    for (int i = 0; i < argc - 1; i++)
+    {
+        // Copy data
         strcpy(data[i].file, argv[i + 1]);
-		data[i].max = MAXCHANGES;
+        data[i].max = MAXCHANGES;
         data[i].index = i;
         // If the argument is number, just skip 
         if (isdigit(data[i].file[0])) continue;
         // Create a thread
-		hThreads[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)func, &data[i].index, 0, NULL);
-		if (hThreads[i] == NULL)
-		{
-			printf("[MAIN] Cannot create a thread for file \"%s\"! (ERROR #%lu)\n", data[i].file, GetLastError());
-			exit(-i);
-		}
-		else printf("[MAIN] Thread #%d for file \"%s\" created successfuly!\n", i, data[i].file);
+        hThreads[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)func, &data[i].index, 0, NULL);
+        if (hThreads[i] == NULL)
+        {
+            printf("[MAIN] Cannot create a thread for file \"%s\"! (ERROR #%lu)\n", data[i].file, GetLastError());
+            exit(-i);
+        }
+        else printf("[MAIN] Thread #%d for file \"%s\" created successfuly!\n", i, data[i].file);
         Sleep(10);	
-	}	
+    }	
     
     Sleep(10);	
     printf("\n");
-	
+    
     // Free the mutex to start threads
-	ReleaseMutex(hMutex);
+    ReleaseMutex(hMutex);
 
-	// Wait for each thread
-	for (int i = 0; i < argc - 1; i++)
-	{
+    // Wait for each thread
+    for (int i = 0; i < argc - 1; i++)
+    {
         if (isdigit(data[i].file[0])) continue;
-		WaitForSingleObject(hThreads[i], INFINITE);
-		GetExitCodeThread(hThreads[i], &res[i]);	
-	}
+        WaitForSingleObject(hThreads[i], INFINITE);
+        GetExitCodeThread(hThreads[i], &res[i]);	
+    }
     // Now we can close the mutex
-	CloseHandle(hMutex);
+    CloseHandle(hMutex);
 
     // Show the results to the user
     printf("\n");
     for (int i = 0; i < argc - 1; i++) {
         if (isdigit(data[i].file[0])) continue;
         // So, res is DWORD type var, then negative number is very big in binary and used 0 - 1024 for example
-		if (res[i] > ((DWORD)0 - (DWORD)1024)) 
+        if (res[i] > ((DWORD)0 - (DWORD)1024)) 
             printf("[MAIN] Thread #%d was unable to process the file \"%s\".\n", i, data[i].file);
         else 
             printf("[MAIN] Thread #%d processed the file \"%s\". Total changes is %d.\n", i, data[i].file, res[i]);
-		CloseHandle(hThreads[i]);
+        CloseHandle(hThreads[i]);
 
     }
 }
