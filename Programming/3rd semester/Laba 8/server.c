@@ -1,20 +1,19 @@
-// Пример простого TCP – сервера
 #include <stdio.h>
 #include <string.h>
 #include <winsock2.h>
 #include <windows.h>
 
 // Network port
-#define PORT    65500
+#define DEFAULT_PORT    65500
+// Network address
+#define DEFAULT_ADDR "192.168.1.102"
 // Maximum size of strings in the app
-#define BUF_SIZE    256
+#define BUF_SIZE    512
 // Name of library (DLL)
 #define LIB_NAME    "maindll.dll"
 // The name of function in the library
 #define FUNC_NAME   "bufferProcessing"
 
-// The number of clients
-int clients = 0;
 // Function prototype from the library
 int (*bufferProcessing)(CHAR*, int);
 
@@ -44,105 +43,115 @@ DWORD WINAPI clientProcessing(LPVOID clientSocket) {
     // Check the library
     hLib = LoadLibrary(libName);
     if (hLib == NULL) {
-        sprintf(message, "[Thread] Cannot load library \"%s\".\n", libName);
-        printf(message);
+        sprintf(message, "Cannot load library \"%s\".\n", libName);
+        printf("[SERVER] %s", message);
         send(funcSocket, message, sizeof(message), 0);
         closesocket(funcSocket);
+        printf("[SERVER] One client just leave us.\n");
         ExitThread (-1);
     } 
     
     // Check the function in library
     bufferProcessing = (int(*)(CHAR*, int))GetProcAddress(hLib, funcName);
     if (bufferProcessing == NULL) {
-        sprintf(message, "[Thread] Cannot find function \"%s\".\n", funcName);
-        printf(message);
+        sprintf(message, "Cannot find function \"%s\".\n", funcName);
+        printf("[SERVER] %s", message);
         send(funcSocket, message, sizeof(message), 0);
         FreeLibrary(hLib);
         closesocket(funcSocket);
+        printf("[SERVER] One client just leave us.\n");
         ExitThread (-2);
     }
 
-    // Send a require for a file name 
-    ZeroMemory(buff, BUF_SIZE);
-    send(funcSocket, str1, sizeof(str1), 0);
-    cbWritten = recv(funcSocket, buff, sizeof(buff), 0);
-    if(cbWritten == SOCKET_ERROR) // принятие сообщения от клиента
-    {
-        sprintf(message, "[Thread] Error while receiving data from clinet [ERROR #%d].\n", GetLastError());
-        printf(message);
+    ZeroMemory(message, BUF_SIZE);
+    while(1) {
+        // Send a require for a file name 
+        ZeroMemory(buff, BUF_SIZE);
+        strcat(message, str1);
         send(funcSocket, message, sizeof(message), 0);
-        FreeLibrary(hLib);
-        closesocket(funcSocket);
-        ExitThread (-3);
-    }
-    strcpy(fileName, buff);
-    
-    ZeroMemory(buff, BUF_SIZE);
-    send(funcSocket, str2, sizeof(str2), 0); // отправляем клиенту сообщение
-    cbWritten = recv(funcSocket, buff, sizeof(buff), 0);
-    if(cbWritten == SOCKET_ERROR) // принятие сообщения от клиента
-    {
-        sprintf(message, "[Thread] Error while receiving data from clinet [ERROR #%d].\n", GetLastError());
-        printf(message);
-        send(funcSocket, message, sizeof(message), 0);
-        FreeLibrary(hLib);
-        closesocket(funcSocket);
-        ExitThread (-4);
-    }
-    maxChanges = atoi(buff);
-
-    // Get the name of output file 
-    strcpy(fileOutName, fileName);
-    strcat(fileOutName, ".out");
-
-    // Try to open input file (READ MODE)
-    hIn = CreateFile(fileName, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL); 
-    if (hIn == INVALID_HANDLE_VALUE) {
-        sprintf(message, "[Thread] Cannot open input file \"%s\". (ERROR #%lu)\n", fileName, GetLastError());
-        printf(message);
-        send(funcSocket, message, sizeof(message), 0);
-        FreeLibrary(hLib);
-        closesocket(funcSocket);
-        ExitThread (-4);
-    } 
-
-    // Try to open output file (WRITE MODE)
-    hOut = CreateFile (fileOutName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); 
-    if(hOut == INVALID_HANDLE_VALUE) {
-        sprintf(message, "[Thread] Cannot open output file \"%s\". (ERROR #%lu)\n", fileOutName, GetLastError());
-        printf(message);
-        send(funcSocket, message, sizeof(message), 0);
-        FreeLibrary(hLib);
-        closesocket(funcSocket);
-        CloseHandle(hIn); 
-        ExitThread (-5);
-    }
-
-    // File reading-writing 
-    ZeroMemory(Buffer, BUF_SIZE);
-    while(ReadFile(hIn, Buffer, BUF_SIZE, &nIn, NULL) && nIn > 0) { 
-        changes = (*bufferProcessing)(Buffer, maxChanges);
-        WriteFile(hOut, Buffer, nIn, &nOut, NULL); 
-        if (nIn != nOut) {
-            printf(message, "[Thread] Cannot write output file \"%s\" correctly. (ERROR #%lu)\n", fileOutName, GetLastError());
-            printf(message);
+        ZeroMemory(message, BUF_SIZE);
+        cbWritten = recv(funcSocket, buff, sizeof(buff), 0);
+        if(cbWritten == SOCKET_ERROR) // принятие сообщения от клиента
+        {
+            sprintf(message, "Error while receiving data from client [ERROR #%d].\n", GetLastError());
+            printf("[SERVER] %s", message);
             send(funcSocket, message, sizeof(message), 0);
             FreeLibrary(hLib);
             closesocket(funcSocket);
-            CloseHandle(hIn); 
-            CloseHandle(hOut);
-            ExitThread (-6);
+            printf("[SERVER] One client just leave us.\n");
+            ExitThread (-3);
         }
+        if (!strcmp(buff, "exit")) break;
+        strcpy(fileName, buff);
+        
+        ZeroMemory(buff, BUF_SIZE);
+        send(funcSocket, str2, sizeof(str2), 0); // отправляем клиенту сообщение
+        cbWritten = recv(funcSocket, buff, sizeof(buff), 0);
+        if(cbWritten == SOCKET_ERROR) // принятие сообщения от клиента
+        {
+            sprintf(message, "Error while receiving data from clinet [ERROR #%d].\n", GetLastError());
+            printf("[SERVER] %s", message);
+            send(funcSocket, message, sizeof(message), 0);
+            FreeLibrary(hLib);
+            closesocket(funcSocket);
+            printf("[SERVER] One client just leave us.\n");
+            ExitThread (-4);
+        }
+        if (!strcmp(buff, "exit")) break;
+        maxChanges = atoi(buff);
+
+        // Get the name of output file 
+        strcpy(fileOutName, fileName);
+        strcat(fileOutName, ".out");
+
+        // Try to open input file (READ MODE)
+        hIn = CreateFile(fileName, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL); 
+        if (hIn == INVALID_HANDLE_VALUE) {
+            sprintf(message, "Cannot open input file \"%s\". (ERROR #%lu)\n", fileName, GetLastError());
+            printf("[SERVER] %s", message);
+            continue;
+        } 
+
+        // Try to open output file (WRITE MODE)
+        hOut = CreateFile (fileOutName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); 
+        if(hOut == INVALID_HANDLE_VALUE) {
+            sprintf(message, "Cannot open output file \"%s\". (ERROR #%lu)\n", fileOutName, GetLastError());
+            printf("[SERVER] %s", message);
+            send(funcSocket, message, sizeof(message), 0);
+            FreeLibrary(hLib);
+            closesocket(funcSocket);
+            CloseHandle(hIn);
+            printf("[SERVER] One client just leave us.\n"); 
+            ExitThread (-5);
+        }
+
+        // File reading-writing 
         ZeroMemory(Buffer, BUF_SIZE);
+        while(ReadFile(hIn, Buffer, BUF_SIZE, &nIn, NULL) && nIn > 0) { 
+            changes = (*bufferProcessing)(Buffer, maxChanges);
+            WriteFile(hOut, Buffer, nIn, &nOut, NULL); 
+            if (nIn != nOut) {
+                printf(message, "Cannot write output file \"%s\" correctly. (ERROR #%lu)\n", fileOutName, GetLastError());
+                printf("[SERVER] %s", message);
+                send(funcSocket, message, sizeof(message), 0);
+                FreeLibrary(hLib);
+                closesocket(funcSocket);
+                CloseHandle(hIn); 
+                CloseHandle(hOut);
+                printf("[SERVER] One client just leave us.\n");
+                ExitThread (-6);
+            }
+            ZeroMemory(Buffer, BUF_SIZE);
+        }
+        sprintf(message, "I proccessed the file \"%s\" correctly. \nTotal changes is %d and it saved in file \"%s\".\n", fileName, changes, fileOutName);
+        printf("[SERVER] %s", message);
     }
-    sprintf(message, "[Thread] I proccessed the file \"%s\" correctly. Total changes is %d and it saved in file \"%s\".\n", fileName, changes, fileOutName);
-    printf(message);
-    send(funcSocket, message, sizeof(message), 0);
+    
     FreeLibrary(hLib);
     CloseHandle(hIn); 
     CloseHandle(hOut);
     closesocket(funcSocket);
-    clients--;
+    printf("[SERVER] One client just leave us.\n");
     return 0;
 }
 
@@ -168,9 +177,9 @@ int main(int argc, char* argv[])
 
     // Create a local address for the socket
     struct sockaddr_in localAddr;
-    localAddr.sin_family       = AF_INET;	   // Set the address system
-    localAddr.sin_port         = htons(PORT);  // Set the network port
-    localAddr.sin_addr.s_addr  = inet_addr("192.168.1.102");   // Make all addresses available
+    localAddr.sin_family       = AF_INET;	                // Set the address system
+    localAddr.sin_port         = htons(DEFAULT_PORT);       // Set the network port
+    localAddr.sin_addr.s_addr  = inet_addr(DEFAULT_ADDR);   // Make all addresses available
 
     // Trying to bind the socket to the local address
     if (bind(serverSocket, (struct sockaddr *) &localAddr, sizeof(localAddr))) {
@@ -200,10 +209,9 @@ int main(int argc, char* argv[])
     // Always wait for a new user
     while(clientSocket = accept(serverSocket, (struct sockaddr *) &clientAddr, &clientAddrSize))
     {
-    	clients++;
     	HOSTENT *hst;
     	hst = gethostbyaddr((char *)&clientAddr.sin_addr.s_addr, 4, AF_INET);
-    	printf("[SERVER] We have a new one! Its name is \"%s\" and its live at \"%s\".\n", (hst)?hst->h_name:"", inet_ntoa(clientAddr.sin_addr));
+    	printf("[SERVER] We have a new one! Its name is \"%s\".\n", (hst)?hst->h_name:"");
         // Launch a new thread to process the client
     	DWORD thID;
     	CreateThread(NULL, 0, clientProcessing, &clientSocket, 0, &thID);
