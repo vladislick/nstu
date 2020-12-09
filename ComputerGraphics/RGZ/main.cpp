@@ -50,22 +50,24 @@ void draw()
     scene->setSceneRect(0, 0, view->width() - 5, view->height() - 5);
     scene->addRect(0, 0, scene->width(), scene->height(), *pen, *brush);
 
-    int minX = 2, minY = 1, dif, lastDif = 100000;
-    float generalAttitude = scene->width() / scene->height(),
+    int minX = 1, minY = 1, dif, lastDif = 100000;
+    float generalAttitude = (float)scene->width() / (float)scene->height(),
           attitude, lastAttitude = 0;
+
+    qDebug() << "Global attitude is " << generalAttitude;
 
     for (int x = 1; x < inputSpinBox->value() + 1; x++) {
         for (int y = 1; y < inputSpinBox->value() + 1; y++) {
             dif = x * y - (inputSpinBox->value() - 1);
             if (dif < 0) continue;
-            if (dif <= lastDif || dif <= (int)sqrt(inputSpinBox->value() - 1)) {
-                attitude = x / y;
+            if (dif <= lastDif || dif < (int)sqrt(inputSpinBox->value() - 1)) {
+                attitude = (float)x / (float)y;
                 if (abs(generalAttitude - attitude) < abs(generalAttitude - lastAttitude)) {
                     minX = x;
                     minY = y;
                     lastAttitude = attitude;
                 }
-                qDebug() << "Found grid (" << x << ", " << y << ").";
+                qDebug() << "Found grid (" << x << ", " << y << ") " << attitude;
                 lastDif = dif;
             }
         }
