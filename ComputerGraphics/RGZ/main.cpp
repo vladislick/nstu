@@ -77,13 +77,24 @@ void draw()
         marginY = scene->height() / minY / 20;
 
     qDebug() << "The best grid is (" << minX << ", " << minY << ")";
+    attitude = (float)(((float)scene->width() / (float)minX) - 2 * marginX) / (float)(((float)scene->height() / (float)minY) - 2 * marginY);
+    qDebug() << "Attitude is " << attitude;
 
     for (int i = 0; i < (inputSpinBox->value() - 1); i++) {
         int x = i % minX;
         int y = i / minX;
         brush->setColor(randColor());
-        scene->addRect(marginX + x * scene->width() / minX, marginY + y * scene->height() / minY,\
-                       scene->width() / minX - 2 * marginX, scene->height() / minY - 2 * marginY, *pen, *brush);
+        if (generalAttitude >= attitude) {
+            int addMargin = (scene->height() / minY - scene->width() / minX / generalAttitude) / 2;
+            scene->addRect(marginX + x * scene->width() / minX, marginY + y * scene->height() / minY + addMargin,\
+                       scene->width() / minX - marginX * 2, scene->width() / minX / generalAttitude - marginY * 2, *pen, *brush);
+            qDebug() << "Real attitude is " << (float)(scene->width() / minX)/(float)(scene->width() / minX / generalAttitude);
+        } else {
+            int addMargin = (scene->width() / minX - scene->height() / minY * generalAttitude) / 2;
+            scene->addRect(marginX + addMargin + x * scene->width() / minX, marginY + y * scene->height() / minY,\
+                       scene->height() / minY * generalAttitude - marginX * 2, scene->height() / minY - marginY * 2, *pen, *brush);
+            qDebug() << "Real attitude is " << (float)(scene->height() / minY * generalAttitude)/(float)(scene->height() / minY);
+        }
     }
 }
 
