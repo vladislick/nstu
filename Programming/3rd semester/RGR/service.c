@@ -10,24 +10,28 @@
 // The name of function in the library
 #define FUNC_NAME   "bufferProcessing"
 
+// Function prototype from other .c file
 extern int addLogMessage(const char* text);
+// Server function prototype
 int ServiceStart();
+// Server function prototype
 void ServiceStop();
-// Идентификаторы объектов - событий, которые используются
-// для синхронизации задач, принадлежащих разным процессам, для службы - ГЛОБАЛЬНЫЕ!
+
+// Events and file mapping descriptors
 HANDLE hEventSend;
 HANDLE hEventRecv;
 HANDLE hEventTermination;
 HANDLE hEvents[2];
-// Имя объекта-событий для синхронизации записи и чтения из отображаемого файла
-CHAR lpEventSendName[] = "Session\\2\\$MylEventSendName$"; 
-CHAR lpEventRecvName[] = "Session\\2\\$MylEventRecvName$";
-// Имя отображния файла на память
-CHAR lpFileShareName[] = "Session\\2\\$MyFileShareName$";
-// Идентификатор отображения файла на память
 HANDLE hFileMapping;
-// Указатель на отображенную область памяти
 LPVOID lpFileMap;
+
+// Event send name
+CHAR lpEventSendName[] = "Session\\2\\$MylEventSendName$"; 
+// Event receive name
+CHAR lpEventRecvName[] = "Session\\2\\$MylEventRecvName$";
+// Event file mapping name
+CHAR lpFileShareName[] = "Session\\2\\$MyFileShareName$";
+
 // Library descriptor
 HINSTANCE hLib;
 // Function prototype from the library
@@ -35,6 +39,7 @@ int (*bufferProcessing)(CHAR*, int);
 
 int Server()
 {
+    // Waiting handles code
     DWORD 	dwRetCode;
     // Library name and function in the library name, just for fun
     char    libName[] = LIB_NAME,
@@ -55,10 +60,9 @@ int Server()
     int     maxChanges = 0;
     // Current number of changes in file
     int     changes = 0, clientNum = 0;
-    FILE 	*hdl;
-    DWORD   total = 0;
-    // буфер для  сообщения об ошибке, результата
-    char message[80] = { 0 };
+    // Buffer for the messages to the client and log file
+    char message[BUF_SIZE] = { 0 };
+
     addLogMessage("Server Ready!");
     while (TRUE)
     {
@@ -66,15 +70,12 @@ int Server()
         sprintf(message, "Wait a message #%d...", clientNum);
         addLogMessage(message);
         dwRetCode = WaitForSingleObject(hEventSend, INFINITE);
-        // Если ожидание было отменено, или если произошла ошибка, прерываем цикл
+        // Wait for the client message
         if (dwRetCode == WAIT_ABANDONED_0 || dwRetCode == WAIT_FAILED)
             break;
-        // Читаем данные (имя файла для обработки) из отображенной области памяти, 
-        // записанный туда клиентским процессом, и отображаем его в консольном окне
         else
         {
-            puts(((LPSTR)lpFileMap));
-            // обработка данных
+            // Get the message
             strcpy(input, (LPSTR)lpFileMap);
             sprintf(message, "Get message: %s.", input);
             addLogMessage(message);
@@ -116,7 +117,8 @@ int Server()
                     maxChanges += input[i] - 48;
                 }
             }
-            
+
+            // Remove the quotes from the file name
             if (quotes % 2 == 0)
                 for (int i = 0; i < strlen(fileName); i++)
                     if (fileName[i] == '"') 
@@ -193,48 +195,23 @@ int Server()
             FreeLibrary(hLib);
             CloseHandle(hIn); 
             CloseHandle(hOut);
-            addLogMessage("The answer send to a client!");
             SetEvent(hEventRecv);
+            addLogMessage("The answer sent to a client!");
         }
     }
-
-    // Закрываем идентификаторы объектов-событий  в ServiceStop()
     return 0;
 }
+
 int ServiceStart()
 {
-    char message[80] = { 0 };
+    char message[BUF_SIZE] = { 0 };
     DWORD res;
-    // Создаем объекты-события для синхронизации записи и чтения в отображаемый файл, выполняемого в разных процессах
-    /*/ Здесь нужны атрибуты безопасности, позволяющие использовать объекты ВСЕМ юзерам
-    // а не создателю и администраторам, как по умолчанию...
-    SECURITY_ATTRIBUTES sa;
-    SECURITY_DESCRIPTOR sd;
-    addLogMessage("Creating security attributes ALL ACCESS for EVERYONE!!!\n");
-    // Создаем дескриптор безопасности
-    InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION);
-    // DACL не установлен (FALSE) - объект незащищен
-    SetSecurityDescriptorDacl(&sd, TRUE, NULL, FALSE);
-    // Настраиваем атрибуты безопасности, передавая туда указатель на дескриптор безопасности sd и создаем объект-событие
-    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa.lpSecurityDescriptor= &sd;
-    sa.bInheritHandle = FALSE;
-    // проверяем структуру дескриптора безопасности
-    if (!IsValidSecurityDescriptor(&sd))
-    {
-        res = GetLastError();
-        addLogMessage("Security descriptor is invalid.\n");
-        sprintf(message, "The last error code: %u\n", res);
-        return -(int)res;
-    }*/
-    // устанавливаем новый дескриптор безоп
+    
+    // Try to create events
     hEventSend = CreateEvent(NULL, FALSE, FALSE, lpEventSendName);
     hEventRecv = CreateEvent(NULL, FALSE, FALSE, lpEventRecvName);
-
-    // альтернативное задание прав всем на все
     SetSecurityInfo(hEventSend,	SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION, NULL,NULL,NULL,	NULL);
     SetSecurityInfo(hEventRecv, SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, NULL, NULL);
-    // Если произошла ошибка, получаем и отображаем ее код, а затем завершаем работу приложения
     addLogMessage("Creating events");
     if (hEventSend == NULL || hEventRecv == NULL)
     {
@@ -242,23 +219,20 @@ int ServiceStart()
         addLogMessage(message);
         return (-1);
     }
-    // Создаем объект-отображение, файл не создаем!!!
+    
+    // Try to create the file mapping
     hFileMapping = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, BUF_SIZE, lpFileShareName);
     SetSecurityInfo(hFileMapping, SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, NULL, NULL);
     addLogMessage("Creating Mapped file");
-    // Если создать не удалось, выводим код ошибки
     if (hFileMapping == NULL)
     {
         sprintf(message, "Cannot execute CreateFileMapping (ERROR #%ld)", GetLastError());
         addLogMessage(message);
-        //getch();
         return -2;
     }
-    // Выполняем отображение файла на память.
-    // В переменную lpFileMap будет записан указатель на отображаемую область памяти
-    lpFileMap = MapViewOfFile(hFileMapping,
-        FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
-    // Если выполнить отображение не удалось, выводим код ошибки
+    
+    // Try to open the map of file view
+    lpFileMap = MapViewOfFile(hFileMapping, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
     if (lpFileMap == 0)
     {
         sprintf(message, "MapViewOfFile: Error %ld\n", GetLastError());
@@ -272,9 +246,7 @@ void ServiceStop()
 {
     CloseHandle(hEventSend);
     CloseHandle(hEventRecv);
-    // Отменяем отображение файла
-    UnmapViewOfFile(lpFileMap);
-    // Освобождаем идентификатор созданного объекта-отображения
     CloseHandle(hFileMapping);
+    UnmapViewOfFile(lpFileMap);
     addLogMessage("All Kernel objects closed!");
 }
