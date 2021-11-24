@@ -95,8 +95,8 @@ int main(int argc, char* argv[]) {
     }
 
     while (number == 0xFFFF) {
-        if (mode == 1) printf("Which message you want to decode?\n");
-        else if (mode == 2) printf("Which message you want to encode?\n");
+        if (mode == 1) printf("Which message do you want to decode?\n");
+        else if (mode == 2) printf("Which message do you want to encode?\n");
         scanf("%s", str);
         if (mode == 1) number = BinStrToInt(str);
         else if (mode == 2) number = DecStrToInt(str);
