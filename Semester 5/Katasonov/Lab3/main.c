@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (mode == 1) {
-        if (decoder(number) == 0xFFFF) printf("An error has occurred while decoding message.\n");
+        if (decoder(number) == 0xFFFF) printf("An error has occurred while decoding a message.\n");
         else printf("%d\n", decoder(number));
     } else if (mode == 2) {
         BinToStr(coder(number), str);
