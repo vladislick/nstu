@@ -26,11 +26,11 @@ HANDLE hFileMapping;
 LPVOID lpFileMap;
 
 // Event send name
-CHAR lpEventSendName[] = "Session\\2\\$MylEventSendName$"; 
+CHAR lpEventSendName[] = "Session\\0\\$MylEventSendName$"; 
 // Event receive name
-CHAR lpEventRecvName[] = "Session\\2\\$MylEventRecvName$";
+CHAR lpEventRecvName[] = "Session\\0\\$MylEventRecvName$";
 // Event file mapping name
-CHAR lpFileShareName[] = "Session\\2\\$MyFileShareName$";
+CHAR lpFileShareName[] = "Session\\0\\$MyFileShareName$";
 
 // Library descriptor
 HINSTANCE hLib;

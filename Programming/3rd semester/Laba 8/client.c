@@ -7,9 +7,9 @@
 //gcc client.c -o client.exe -lws2_32
 
 // Network port
-#define DEFAULT_PORT 65500
+#define DEFAULT_PORT 4422
 // Network address
-#define DEFAULT_ADDR "192.168.1.102"
+#define DEFAULT_ADDR "217.71.129.139"
 
 int main(int argc, char* argv[])
 {

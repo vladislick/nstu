@@ -4,9 +4,9 @@
 #include <windows.h>
 
 // Network port
-#define DEFAULT_PORT    65500
+#define DEFAULT_PORT    65000
 // Network address
-#define DEFAULT_ADDR "192.168.1.102"
+#define DEFAULT_ADDR "172.17.4.138"
 // Maximum size of strings in the app
 #define BUF_SIZE    512
 // Name of library (DLL)
