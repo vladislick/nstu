@@ -6,7 +6,7 @@
 // Таблица соответствия BCD и DEC кодов
 uint8_t table[10];
 // Модификация BCD кода
-uint8_t mod[4] = { 8, 4, 2, 1 };
+uint8_t mod[4] = { 5, 3, 1, 1 };
 
 // Заполнить таблицу соответствия согласно модификации
 void tableCreate(uint8_t* table, uint8_t* mod) {
