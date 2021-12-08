@@ -42,7 +42,7 @@ void BinToStr(uint16_t code, char* str, uint16_t length) {
     }
 }
 
-// Кодирует число number в код с защитой повторением
+// Кодирует число number в модифицированнный код Хэмминга
 uint16_t coder(uint16_t number, uint16_t length) {
     uint16_t result = 0;
     // Генерируем маски для определения бит
@@ -95,23 +95,10 @@ uint16_t coder(uint16_t number, uint16_t length) {
     for (; temp; count++) temp &= (temp - 1);
     if (count & 1) result |= (1 << (length - 1));
 
-    /*char str[30];
-    for (uint8_t i = 0; i < numOfEq; i++) {
-        BinToStr(solution[i], str, length);
-        printf("Solution %d is %s.\n", i, str);
-    }
-    BinToStr(maskI, str, length);
-    printf("MaskI is %s.\n", str);
-    BinToStr(maskK, str, length);
-    printf("MaskK is %s.\n", str);
-    BinToStr(number, str, length);
-    printf("Message is %s.\n", str);
-    BinToStr(result, str, length);
-    printf("Result is %s.\n", str);*/
     return result;
 }
 
-// Декодирует код с защитой повторением в число
+// Декодирует модифицированнный код Хэмминга в число
 uint16_t decoder(uint16_t code, uint16_t length) {
     uint16_t result = 0;
     // Генерируем маски для определения бит
