@@ -178,7 +178,7 @@ int main(int argc, char* argv[]) {
     n = 11;
     M = (uint16_t)pow(2, k);
     d = 4;
-    D = 0.4;
+    D = 1 - (float)k/n;
 
     if (argc == 1) printf("M = %d\nn = %d\nk = %d\nd = %d\nD = %f\n", M, n, k, d, D);
 
