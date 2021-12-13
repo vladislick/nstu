@@ -19,6 +19,94 @@ void BinToStr(uint32_t code, char* str) {
     str[index++] = '\0';
 }
 
+// Возвращает размер таблицы синдромов
+uint16_t syndromeSelectorSize(uint8_t d, uint8_t n) {
+    uint8_t r = (d - 1) / 2, count;
+    uint32_t t1, t2;
+    uint16_t index = 0;
+    for (uint8_t i = 0; i < r; i++) {
+        // Если вес вектора ошибок r = 1
+        if (i == 0) index++;
+        // Если вес вектора ошибок r = 2
+        else if (i == 1) for (uint8_t j = 0; j < (n - 1); j++) index++;
+        // Если вес вектора ошибок r > 2
+        else {
+            t1 = 1 << (n - 1);
+            // Начинаем перебирать все возможные комбинации
+            for (uint32_t j = 0; j < t1; j++) {
+                // Узнаём вес комбинации
+                count = 0; t2 = j;
+                for (; t2; count++) t2 &= t2 - 1;
+                // Если комбинация подходит, добавляем в таблицу
+                if (count == i) index++;
+            }
+        }
+    }
+    return index;
+}
+
+// Создание таблицы синдромов из условия
+uint8_t syndromeSelectorCreate(uint32_t* tableS, uint16_t tableSize, uint8_t d, uint8_t n, uint32_t gx) {
+    // Создаём таблицу векторов ошибок
+    uint32_t* tableV = calloc(tableSize, 4);
+    uint32_t t1, t2;
+    uint16_t index = 0, count;
+    uint8_t r = (d - 1) / 2;
+    char str[128];
+
+    // Находим крайний старший бит
+    t1 = 1 << (n - 1);
+
+    // Заполняем таблицу векторов ошибок
+    for (uint8_t i = 0; i < r; i++) {
+        // Если вес вектора ошибок r = 1
+        if (i == 0) tableV[index++] = t1;
+        // Если вес вектора ошибок r = 2
+        else if (i == 1) for (uint8_t j = 0; j < (n - 1); j++) tableV[index++] = t1 | (1 << j);
+        // Если вес вектора ошибок r > 2
+        else {
+            // Начинаем перебирать все возможные комбинации
+            for (uint32_t j = 0; j < t1; j++) {
+                // Узнаём вес комбинации
+                count = 0; t2 = j;
+                for (; t2; count++) t2 &= t2 - 1;
+                // Если комбинация подходит, добавляем в таблицу
+                if (count == i) tableV[index++] = t1 | j;
+            }
+        }
+    }
+
+    // Заполняем таблицу синдромов
+    uint32_t workspace, code;
+    for (uint16_t j = 0; j < tableSize; j++) {
+         // Определяем реальную длину порождающего полинома
+        t2 = gx; index = 0; workspace = 0;
+        while(t2 != 1) { t2 >>= 1; index++; }
+        code = tableV[j];
+
+        for (uint8_t i = 0; i < n; i++) {
+            workspace <<= 1;
+            if (code & t1) workspace |= 1;
+            code <<= 1;
+            
+            if (workspace & (1 << index)) workspace ^= gx;
+        }
+
+        tableS[j] = workspace;
+    }
+
+    t2 = 0;
+    for (uint16_t i = 0; i < tableSize; i++) {
+        for (uint16_t j = 0; j < tableSize; j++) {
+            if (j == i) continue;
+            if (tableS[i] == tableS[j]) t2 = 1;
+        }
+    }
+
+    free(tableV);
+    return t2;
+}
+
 // Выводит все подходящие порождающие полиномы
 void findGx(uint8_t k, uint8_t d, uint8_t maxcount) {
     char str[256];
@@ -77,6 +165,14 @@ void findGx(uint8_t k, uint8_t d, uint8_t maxcount) {
         printf("g(x) may be:\n\t%s,\n\t", str);
         BinToStr(gx, str);
         printf("%s,\n\tThe code is (%d, %d, %d).\n", str, n, k, d);
+        uint16_t tableSize = syndromeSelectorSize(d, n);
+        uint32_t* table = calloc(tableSize, 4);
+        if (syndromeSelectorCreate(table, tableSize, d, n, gx)) {
+            free(table);
+            printf("^ g(x) cannot be.\n");
+            continue;
+        }
+        free(table);
         
         if (maxcount > 1) maxcount--;
         else break;
@@ -86,5 +182,5 @@ void findGx(uint8_t k, uint8_t d, uint8_t maxcount) {
 int main() {
     // Найти подходящие порождающие полиномы 
     // (кол-во информационных бит, кодовое расстояние, количество)
-    findGx(11, 11, 3);
+    findGx(11, 7, 2);
 }
