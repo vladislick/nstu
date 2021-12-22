@@ -237,6 +237,6 @@ void findGx(uint8_t k, uint8_t d, uint8_t maxcount) {
 int main() {
     // Найти подходящие порождающие полиномы 
     // (кол-во информационных бит, кодовое расстояние, количество)
-    findGx(11, 11, 2);
+    findGx(11, 13, 2);
     //printf("%d\n", syndromeSelectorSize(11, 64));
 }

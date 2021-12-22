@@ -250,6 +250,8 @@ uint16_t decoder(uint32_t code, uint32_t gx, uint8_t n, uint64_t* table, uint32_
         }
     }
 
+    if (workspace) return 0xFFFF;
+
     BinToStr(code, str);
     printf("    Input code is %s\n", str);
     BinToStr(codeFixed, str);
