@@ -70,80 +70,111 @@ uint32_t coder(uint16_t number, uint32_t gx) {
     return result;
 }
 
-/*
-// Возвращает факториал числа
-double factorial(uint8_t number) {
-    double a = 1;
-    for (uint8_t i = 2; i <= number; i++) a *= i;
-    return a;
-}
-
-// Число сочетаний
-uint64_t C(uint8_t k, uint8_t n) {
-    return factorial(n)/(factorial(n - k) * factorial(k));
-}
-*/
-
 // Возвращает размер таблицы синдромов
-uint16_t syndromeSelectorSize(uint8_t d, uint8_t n) {
-    uint8_t r = (d - 1) / 2, count;
-    uint32_t t1, t2;
-    uint16_t index = 0;
+uint32_t syndromeSelectorSize(uint8_t d, uint8_t n) {
+    uint8_t r = (d - 1) / 2, done, set;
+    uint32_t count = 0;
     for (uint8_t i = 0; i < r; i++) {
-        // Если вес вектора ошибок r = 1
-        if (i == 0) index++;
-        // Если вес вектора ошибок r = 2
-        else if (i == 1) for (uint8_t j = 0; j < (n - 1); j++) index++;
-        // Если вес вектора ошибок r > 2
+        if (i == 0) count++;
+        else if (i == 1) count += n - 1;
         else {
-            t1 = 1 << (n - 1);
-            // Начинаем перебирать все возможные комбинации
-            for (uint32_t j = 0; j < t1; j++) {
-                // Узнаём вес комбинации
-                count = 0; t2 = j;
-                for (; t2; count++) t2 &= t2 - 1;
-                // Если комбинация подходит, добавляем в таблицу
-                if (count == i) index++;
+            done = 1;
+            // Создаём массив для единиц
+            uint8_t* word = calloc(i, 1);
+            
+            // Инициализируем массив
+            for (uint8_t j = 0; j < i; j++) word[j] = j;
+            count++;
+            
+            // Проходим по массиву
+            while(done) {
+                done = 0;
+                // Проходим по всем единицам
+                for (int8_t k = i - 1; k >= 0; k--) {
+                    // Если все единицы, начиная с k-той идут подряд без нулей
+                    set = 1;
+                    for (int8_t p = k; p > 0; p--)
+                        if ((word[p]-1) != word[p - 1]) set = 0;
+                    if (set) {
+                        if (word[k] == (n - 2)) break;
+                        word[k]++;
+                        count++;
+                        done = 1;
+
+                        // Возвращаем все предыдущие единицы в начало
+                        for (int8_t j = (k - 1); j >= 0; j--) word[j] = j;
+                    }
+                }
             }
+
+            // Удаляем массив
+            free(word);
         }
     }
-    return index;
+    return count;
 }
 
 // Создание таблицы синдромов из условия
-uint8_t syndromeSelectorCreate(uint32_t* tableS, uint16_t tableSize, uint8_t d, uint8_t n, uint32_t gx) {
+uint8_t syndromeSelectorCreate(uint64_t* tableS, uint32_t tableSize, uint8_t d, uint8_t n, uint64_t gx) {
     // Создаём таблицу векторов ошибок
-    uint32_t* tableV = calloc(tableSize, 4);
-    uint32_t t1, t2;
-    uint16_t index = 0, count;
-    uint8_t r = (d - 1) / 2;
+    uint64_t* tableV = calloc(tableSize, 8);
+    uint64_t t1, t2;
+    uint32_t index = 0;
+    uint8_t r = (d - 1) / 2, done, set;
     char str[128];
 
     // Находим крайний старший бит
-    t1 = 1 << (n - 1);
-
-    // Заполняем таблицу векторов ошибок
+    t1 = (uint64_t)1 << (n - 1);
+    
     for (uint8_t i = 0; i < r; i++) {
-        // Если вес вектора ошибок r = 1
         if (i == 0) tableV[index++] = t1;
-        // Если вес вектора ошибок r = 2
         else if (i == 1) for (uint8_t j = 0; j < (n - 1); j++) tableV[index++] = t1 | (1 << j);
-        // Если вес вектора ошибок r > 2
         else {
-            // Начинаем перебирать все возможные комбинации
-            for (uint32_t j = 0; j < t1; j++) {
-                // Узнаём вес комбинации
-                count = 0; t2 = j;
-                for (; t2; count++) t2 &= t2 - 1;
-                // Если комбинация подходит, добавляем в таблицу
-                if (count == i) tableV[index++] = t1 | j;
+            done = 1;
+            // Создаём массив для единиц
+            uint8_t* word = calloc(i, 1);
+            
+            // Инициализируем массив
+            tableV[index] = t1;
+            for (uint8_t j = 0; j < i; j++) {
+                word[j] = j;
+                tableV[index] |= 1 << j;
             }
+            index++;
+            
+            // Проходим по массиву
+            while(done) {
+                done = 0;
+                // Проходим по всем единицам
+                for (int8_t k = i - 1; k >= 0; k--) {
+                    // Если все единицы, начиная с k-той идут подряд без нулей
+                    set = 1;
+                    for (int8_t p = k; p > 0; p--)
+                        if ((word[p]-1) != word[p - 1]) set = 0;
+                    if (set) {
+                        if (word[k] == (n - 2)) break;
+                        word[k]++;
+                        done = 1;
+
+                        // Возвращаем все предыдущие единицы в начало
+                        for (int8_t j = (k - 1); j >= 0; j--) word[j] = j;
+
+                        // Добавляем вектор ошибки
+                        tableV[index] = t1;
+                        for (uint8_t j = 0; j < i; j++) tableV[index] |= (uint64_t)1 << word[j];
+                        index++;
+                    }
+                }
+            }
+
+            // Удаляем массив
+            free(word);
         }
     }
 
     // Заполняем таблицу синдромов
-    uint32_t workspace, code;
-    for (uint16_t j = 0; j < tableSize; j++) {
+    uint64_t workspace, code;
+    for (uint32_t j = 0; j < tableSize; j++) {
          // Определяем реальную длину порождающего полинома
         t2 = gx; index = 0; workspace = 0;
         while(t2 != 1) { t2 >>= 1; index++; }
@@ -154,20 +185,17 @@ uint8_t syndromeSelectorCreate(uint32_t* tableS, uint16_t tableSize, uint8_t d, 
             if (code & t1) workspace |= 1;
             code <<= 1;
             
-            if (workspace & (1 << index)) workspace ^= gx;
+            if (workspace & ((uint64_t)1 << index)) workspace ^= gx;
         }
 
         tableS[j] = workspace;
     }
 
     t2 = 0;
-    for (uint16_t i = 0; i < tableSize; i++) {
-        for (uint16_t j = 0; j < tableSize; j++) {
+    for (uint32_t i = 0; i < tableSize; i++) {
+        for (uint32_t j = 0; j < tableSize; j++) {
             if (j == i) continue;
-            if (tableS[i] == tableS[j]) {
-                if (!t2) printf("WARNING: found equal syndromes in table.\n");
-                t2 = 1;
-            }
+            if (tableS[i] == tableS[j]) t2 = 1;
         }
     }
 
@@ -176,7 +204,7 @@ uint8_t syndromeSelectorCreate(uint32_t* tableS, uint16_t tableSize, uint8_t d, 
 }
 
 // Декодирует code посредством деления code на gx
-uint16_t decoder(uint32_t code, uint32_t gx, uint8_t n, uint32_t* table, uint16_t tableSize) {
+uint16_t decoder(uint32_t code, uint32_t gx, uint8_t n, uint64_t* table, uint32_t tableSize) {
     uint16_t result = 0;
     uint32_t codeFixed = 0;
     uint32_t workspace = 0;
@@ -195,7 +223,7 @@ uint16_t decoder(uint32_t code, uint32_t gx, uint8_t n, uint32_t* table, uint16_
             temp = 1 << (n - 1 - (i - n));
             codeFixed |= code & temp;
             if (workspace != 0)
-                for (uint16_t j = 0; j < tableSize; j++) 
+                for (uint32_t j = 0; j < tableSize; j++) 
                     if (table[j] == workspace) 
                         codeFixed ^= temp;
             temp = 0;
@@ -208,8 +236,22 @@ uint16_t decoder(uint32_t code, uint32_t gx, uint8_t n, uint32_t* table, uint16_
         if (workspace & (1 << index)) workspace ^= gx;
     }
 
+    workspace = 0; temp = codeFixed, result = 0;
+    for (uint8_t i = 0; i < n; i++) {
+        result <<= 1;
+
+        workspace <<= 1;
+        if (temp & (1 << (n - 1))) workspace |= 1;
+        temp <<= 1;
+        
+        if (workspace & (1 << index)) {
+            workspace ^= gx;
+            result |= 1;
+        }
+    }
+
     BinToStr(code, str);
-    printf("Input code is %s\n", str);
+    printf("    Input code is %s\n", str);
     BinToStr(codeFixed, str);
     printf("Corrected code is %s\n", str);
 
@@ -220,20 +262,20 @@ int main(int argc, char* argv[]) {
     char str[STR_MAX];
     uint8_t mode = 0xFF;
     uint32_t number = 0xFFFF;
-    uint32_t* table = NULL;
-    uint16_t tableSize;
+    uint64_t* table = NULL;
+    uint32_t tableSize;
 
     uint16_t M, n, k, d, N;
     float D;
 
     M = 2048;
     // Параметры кода
-    n = 26; k = 11; d = 9;
+    n = 31; k = 11; d = 11;
     // Порождающий полином
-    uint32_t gx = 0b1000111110101111;
+    uint32_t gx = 0b100001100101100111011;
     //D = 1 - (float)k/n;
 
-   // if (argc == 1) printf("M = %d\nn = %d\nk = %d\nd = %d\nD = %f\n", M, n, k, d, D);
+    if (argc == 1) printf("M = %d\nn = %d\nk = %d\nd = %d\nD = %f\n", M, n, k, d, D);
 
     // Проверяем аргументы командной строки
     for (uint8_t i = 1; i < argc; i++) {
@@ -269,7 +311,7 @@ int main(int argc, char* argv[]) {
         // Для использования декодера необходима таблица синдромов
         if (table == NULL) {
             tableSize = syndromeSelectorSize(d, n);
-            table = calloc(tableSize, 4);
+            table = calloc(tableSize, 8);
             syndromeSelectorCreate(table, tableSize, d, n, gx);
             /*printf("Table size is %d\n", tableSize);
             for (uint16_t j = 0; j < tableSize; j++) {
