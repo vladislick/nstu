@@ -2,3 +2,6 @@
 *.out
 ~$*
 .vscode
+main
+main.exe
+
