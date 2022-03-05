@@ -17,7 +17,6 @@ int readMatrix(FILE* file, struct matrix* m) {
     if (fscanf(file, "%d", &m->rows) == EOF) return 1;
     if (fscanf(file, "%d", &m->columns) == EOF) return 2;
 
-    // Check size of matrix A
     if (m->rows < 1 || m->columns < 1) return 3;
 
     // Create matrix
