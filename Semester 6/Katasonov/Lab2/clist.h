@@ -27,36 +27,55 @@ private:
 public:
     // Класс итератор
     class iterator {
-        
     public:
         lNode* node;
         lNode* temp;
 
         iterator() {
             node = 0;
+            temp = 0;
         }
 
-        iterator(lNode* iNode) { 
-            node = iNode; 
+        iterator(lNode* iNode, lNode* iTemp = 0) { 
+            node = iNode;
+            temp = iTemp;
         }
         
         iterator& operator++() {
+            if (!node) {
+                node = temp;
+                return *this;
+            }
+            temp = node;
             node = node->lNext;
             return *this;
         }
         
         iterator& operator--() {
+            if (!node) {
+                node = temp;
+                return *this;
+            }
+            temp = node;
             node = node->lPrev;
             return *this;
         }
         
         iterator operator++(int) {
+            if (!node) {
+                node = temp;
+                return 0;
+            }
             temp = node;
             node = node->lNext;
             return temp;
         }
         
         iterator operator--(int) {
+            if (!node) {
+                node = temp;
+                return 0;
+            }
             temp = node;
             node = node->lPrev;
             return temp;
@@ -100,6 +119,9 @@ public:
             return node->lData;
         }
     };
+
+    // Вспомогательный итератор
+    iterator iTemp;
 
     // Конструктор класса по умолчанию
     clist() {
@@ -151,27 +173,65 @@ public:
         else if (lTail->lNext)  lTail = lTemp;
     }
 
+    // Выдавить элемент по итератору
+    lType pop(iterator& it) {
+        lType result;
+        if (!it.node) result = lTail->lData;
+        else result = it.node->lData;
+        // Если был указан несуществующий узел (удалить последний узел)
+        if (!it.node) {
+            lTail = lTail->lPrev;
+            delete lTail->lNext;
+            lTail->lNext = 0;
+            it.node = lTail;
+        } else {
+            // Создаём связь предыдущего элемента
+            if (it.node->lPrev) {
+                it.node->lPrev->lNext = it.node->lNext;
+                it.temp = it.node->lPrev;
+            }
+            else lHead = it.node->lNext;
+
+            // Создаём связь следующего элемента
+            if (it.node->lNext) {
+                it.node->lNext->lPrev = it.node->lPrev;
+                it.temp = it.node->lNext;
+            }
+            else lTail = it.node->lPrev;
+            
+            delete it.node;
+            it.node = it.temp;
+        }
+        return result;   
+    }
+
+    void erase(iterator& it) {
+        pop(it);
+    }
+
     // Возвращает итератор на первый узел списка
-    iterator begin() {
-        iterator it(lHead);
-        return it;
+    iterator& begin() {
+        iTemp.node = lHead;
+        return iTemp;
     }
 
     // Возвращает итератор на последний узел списка
-    iterator rbegin() {
-        iterator it(lTail);
-        return it;
+    iterator& rbegin() {
+        iTemp.node = lTail;
+        return iTemp;
     }
 
     // Возвращает итератор несуществующего узла списка
-    iterator end() {
-        iterator it;
-        return it;
+    iterator& end() {
+        iTemp.node = 0;
+        iTemp.temp = lTail;
+        return iTemp;
     }
 
     // Возвращает итератор несуществующего узла списка
-    iterator rend() {
-        iterator it;
-        return it;
+    iterator& rend() {
+        iTemp.node = 0;
+        iTemp.temp = lHead;
+        return iTemp;
     }
 };

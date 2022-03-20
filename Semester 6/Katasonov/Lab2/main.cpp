@@ -16,9 +16,12 @@ int main() {
     for (auto it = list.begin(); it != list.end(); it++)
         cout << "-> " << *it << endl;
 
-    cout << endl << "Reverse list is:" << endl;
-    for (auto it = list.rbegin(); it != list.rend(); it--)
+    cout << "Pop is " << list.pop(list.end()) << endl;
+
+    cout << "List is:" << endl;
+    for (auto it = list.begin(); it != list.end(); it++)
         cout << "-> " << *it << endl;
+
 
     return 0;
 }
