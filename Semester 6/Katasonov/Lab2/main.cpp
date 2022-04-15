@@ -8,20 +8,16 @@ int main() {
     clist<int> list;
     
     list.insert(list.end(), 2);
-    list.insert(list.end(), 3);
     list.insert(list.end(), 4);
+    list.insert(list.end()--, 3);
     list.insert(list.begin(), 1);
 
     cout << "List is:" << endl;
     for (auto it = list.begin(); it != list.end(); it++)
         cout << "-> " << *it << endl;
 
-    //cout << "Pop is " << list.pop(list.end()) << endl;
-
-    auto it = list.begin();
-    auto id = list.end();
-    it = id + 3;
-    cout << "Pop is " << list.pop(it) << endl;
+    auto i = list.begin() + 2;
+    cout << "Pop is " << list.pop(i) << endl;
 
     cout << "List is:" << endl;
     for (auto it = list.begin(); it != list.end(); it++)
