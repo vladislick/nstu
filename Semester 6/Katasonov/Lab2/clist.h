@@ -7,41 +7,41 @@ private:
     struct lNode
     {
         // Указатель на следующий узел списка
-        lNode *lNext;
+        lNode *lNext = 0;
         // Указатель на предыдущий узел списка
-        lNode *lPrev;
+        lNode *lPrev = 0;
         // Данные, которые хранит узел
         lType lData;
         // Конструктор структуры lNode
         lNode(lType &data) {
-            lNext = lPrev = 0;
             lData = data;
         }
     };
-
     // Указатель на начало (голову) списка
     lNode* lHead;
     // Указатель на конец (хвост) списка
     lNode* lTail;
 
 public:
+
     // Класс итератор
     class iterator {
-    public:
+        friend class clist;
+    private:
         lNode* node;
         lNode* temp;
-
-        iterator() {
-            node = 0;
-            temp = 0;
-        }
 
         iterator(lNode* iNode, lNode* iTemp = 0) { 
             node = iNode;
             temp = iTemp;
         }
+    public:
+        iterator() {
+            node = 0;
+            temp = 0;
+        }
         
-        iterator& operator++() {
+        const iterator& operator++(int) {
             if (!node) {
                 node = temp;
                 return *this;
@@ -51,7 +51,7 @@ public:
             return *this;
         }
         
-        iterator& operator--() {
+        const iterator& operator--(int) {
             if (!node) {
                 node = temp;
                 return *this;
@@ -59,26 +59,6 @@ public:
             temp = node;
             node = node->lPrev;
             return *this;
-        }
-        
-        iterator operator++(int) {
-            if (!node) {
-                node = temp;
-                return 0;
-            }
-            temp = node;
-            node = node->lNext;
-            return temp;
-        }
-        
-        iterator operator--(int) {
-            if (!node) {
-                node = temp;
-                return 0;
-            }
-            temp = node;
-            node = node->lPrev;
-            return temp;
         }
         
         iterator operator+(int n) {
@@ -95,13 +75,13 @@ public:
             return temp;
         }
 
-        iterator& operator+=(int n) {
+        const iterator& operator+=(int n) {
             for (int i = 0; i < n; i++)
                 node = node->lNext;
             return *this;
         }
 
-        iterator& operator-=(int n) {
+        const iterator& operator-=(int n) {
             for (int i = 0; i < n; i++)
                 node = node->lPrev;
             return *this;
@@ -115,13 +95,10 @@ public:
             return node == it.node;
         }
 
-        lType& operator*() {
+        const lType& operator*() {
             return node->lData;
         }
     };
-
-    // Вспомогательный итератор
-    iterator iTemp;
 
     // Конструктор класса по умолчанию
     clist() {
@@ -174,7 +151,7 @@ public:
     }
 
     // Выдавить элемент по итератору
-    lType pop(iterator& it) {
+    lType pop(iterator it) {
         lType result;
         if (!it.node) result = lTail->lData;
         else result = it.node->lData;
@@ -205,33 +182,31 @@ public:
         return result;   
     }
 
-    void erase(iterator& it) {
+    void erase(iterator it) {
         pop(it);
     }
 
     // Возвращает итератор на первый узел списка
-    iterator& begin() {
-        iTemp.node = lHead;
+    iterator begin() {
+        iterator iTemp(lHead);
         return iTemp;
     }
 
     // Возвращает итератор на последний узел списка
-    iterator& rbegin() {
-        iTemp.node = lTail;
+    iterator rbegin() {
+        iterator iTemp(lTail);
         return iTemp;
     }
 
     // Возвращает итератор несуществующего узла списка
-    iterator& end() {
-        iTemp.node = 0;
-        iTemp.temp = lTail;
+    iterator end() {
+        iterator iTemp(0, lTail);
         return iTemp;
     }
 
     // Возвращает итератор несуществующего узла списка
-    iterator& rend() {
-        iTemp.node = 0;
-        iTemp.temp = lHead;
+    iterator rend() {
+        iterator iTemp(0, lHead);
         return iTemp;
     }
 };

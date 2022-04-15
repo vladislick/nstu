@@ -16,12 +16,16 @@ int main() {
     for (auto it = list.begin(); it != list.end(); it++)
         cout << "-> " << *it << endl;
 
-    cout << "Pop is " << list.pop(list.end()) << endl;
+    //cout << "Pop is " << list.pop(list.end()) << endl;
+
+    auto it = list.begin();
+    auto id = list.end();
+    it = id + 3;
+    cout << "Pop is " << list.pop(it) << endl;
 
     cout << "List is:" << endl;
     for (auto it = list.begin(); it != list.end(); it++)
         cout << "-> " << *it << endl;
-
 
     return 0;
 }
