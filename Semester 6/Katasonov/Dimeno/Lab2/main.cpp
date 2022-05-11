@@ -16,7 +16,7 @@ int main() {
         cout << "-> " << *it << endl;
 
     list.erase(list.begin());
-    //cout << "Pop is " << list.pop(i) << endl;
+    list.at(list.begin() + 1) = 15;
 
     cout << "List is:" << endl;
     for (auto it = list.begin(); it != list.end(); it++)

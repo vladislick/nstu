@@ -33,6 +33,7 @@ public:
         iterator() {
             node = prev = nullptr;
         }
+
         
         const iterator& operator++(int) {
             if (node != nullptr) {
@@ -151,7 +152,7 @@ public:
     }
 
     // Получить значение узла по итератору
-    myType read(const iterator& it) {
+    myType& at(const iterator& it) {
         // Если итератор указывает на существующий узел
         if (it.node != nullptr) return it.node->data;
         // Создаем итератор и ищем конец списка
