@@ -1,89 +1,69 @@
 #pragma once
 
-template <typename lType>
+template <typename myType>
 class clist {
 private:
     // Структура узла связанного списка
-    struct lNode
+    struct Node
     {
         // Указатель на следующий узел списка
-        lNode *lNext = 0;
-        // Указатель на предыдущий узел списка
-        lNode *lPrev = 0;
+        Node *next;
         // Данные, которые хранит узел
-        lType lData;
-        // Конструктор структуры lNode
-        lNode(lType &data) {
-            lData = data;
+        myType data;
+        // Конструктор структуры node
+        Node(myType &value) {
+            data = value;
+            next = nullptr;
         }
     };
     // Указатель на начало (голову) списка
-    lNode* lHead;
-    // Указатель на конец (хвост) списка
-    lNode* lTail;
-
+    Node *Head;
 public:
-
-    // Класс итератор
+    // Класс итератора
     class iterator {
         friend class clist;
     private:
-        lNode* node;
-        lNode* temp;
+        Node *node, *prev;
 
-        iterator(lNode* iNode, lNode* iTemp = 0) { 
-            node = iNode;
-            temp = iTemp;
+        iterator(Node* pNode, Node* pPrev = nullptr) { 
+            node = pNode;
+            prev = pPrev;
         }
     public:
         iterator() {
-            node = 0;
-            temp = 0;
+            node = prev = nullptr;
         }
         
         const iterator& operator++(int) {
-            if (!node) {
-                node = temp;
-                return *this;
+            if (node != nullptr) {
+                // Запоминание текущего узла
+                prev = node;
+                // Переход к следующему узлу
+                node = node->next;
             }
-            temp = node;
-            node = node->lNext;
-            return *this;
-        }
-        
-        const iterator& operator--(int) {
-            if (!node) {
-                node = temp;
-                return *this;
-            }
-            temp = node;
-            node = node->lPrev;
             return *this;
         }
         
         iterator operator+(int n) {
-            temp = node;
-            for (int i = 0; i < n; i++)
-                temp = temp->lNext;
-            return temp;
-        }
-
-        iterator operator-(int n) {
-            temp = node;
-            for (int i = 0; i < n; i++)
-                temp = temp->lPrev;
-            return temp;
+            // Создаём копию итератора
+            iterator it = *this;
+            // Проходим в цикле по узлам
+            for (int i = 0; i < n; i++) {
+                // Запоминание текущего узла
+                it.prev = it.node;
+                // Переход к следующему узлу
+                it.node = it.node->next;
+            }
+            return it;
         }
 
         const iterator& operator+=(int n) {
-            for (int i = 0; i < n; i++)
-                node = node->lNext;
-            return *this;
-        }
-
-        const iterator& operator-=(int n) {
-            for (int i = 0; i < n; i++)
-                node = node->lPrev;
+            for (int i = 0; i < n; i++) {
+                // Запоминание текущего узла
+                prev = node;
+                // Переход к следующему узлу
+                node = node->next;
+            }
             return *this;
         }
 
@@ -95,118 +75,101 @@ public:
             return node == it.node;
         }
 
-        const lType& operator*() {
-            return node->lData;
+        const myType& operator*() {
+            return node->data;
         }
     };
 
     // Конструктор класса по умолчанию
     clist() {
         // Обнуляем все переменные
-        lHead = lTail = 0;
+        Head = nullptr;
     }
 
     // Деструктор класса
     ~clist() {
         // Выбираем начало списка
-        lNode *lTemp = lHead;
+        Node *temp = Head;
+        // Для запоминания адреса следующего узла
+        Node *temp2;
         // Пройти по всем узлам списка, высвобождая их из памяти
-        while (lTemp) {
-            // Используем lTail для запоминания адреса следующего узла
-            lTail = lTemp->lNext;
+        while (temp) {
+            // Используем temp2 для запоминания адреса следующего узла
+            temp2 = temp->next;
             // Высвобождаем текущий узел из памяти
-            delete lTemp;
+            delete temp;
             // Выбираем следующий узел в качестве текущего
-            lTemp = lTail;
+            temp = temp2;
         }
     }
 
     // Вставить элемент по итератору
-    void insert(iterator it, lType data) {
-        // Создаём новый узел
-        lNode *lTemp = new lNode(data);
-        // Если конец списка не существует, значит список пуст
-        if (!lTail) {
-            lHead = lTail = lTemp;
+    void insert(const iterator& it, myType value) {
+        // Создаём новый узел с помощью конструктора структуры Node
+        Node *temp = new Node(value);
+        // Если список пуст
+        if (Head == nullptr) {
+            Head = temp;
             return;
         }
-        // Если был указан несуществующий узел
-        if (!it.node) {
-            // Создаём связь с последним узлом в списке
-            lTail->lNext = lTemp;
-            lTemp->lPrev = lTail;
-        } else {
-            // Создаём связь с предыдущим элементом, если он есть
-            if (it.node->lPrev) {
-                it.node->lPrev->lNext = lTemp;
-                lTemp->lPrev = it.node->lPrev;
-            }
-            // Создаём связь со следующим узлом
-            it.node->lPrev = lTemp;
-            lTemp->lNext = it.node;
-        }     
-        // Меняем начало и конец списка
-        if (lHead->lPrev)       lHead = lTemp;
-        else if (lTail->lNext)  lTail = lTemp;
-    }
-
-    // Выдавить элемент по итератору
-    lType pop(iterator it) {
-        lType result;
-        if (!it.node) result = lTail->lData;
-        else result = it.node->lData;
-        // Если был указан несуществующий узел (удалить последний узел)
-        if (!it.node) {
-            lTail = lTail->lPrev;
-            delete lTail->lNext;
-            lTail->lNext = 0;
-            it.node = lTail;
-        } else {
-            // Создаём связь предыдущего элемента
-            if (it.node->lPrev) {
-                it.node->lPrev->lNext = it.node->lNext;
-                it.temp = it.node->lPrev;
-            }
-            else lHead = it.node->lNext;
-
-            // Создаём связь следующего элемента
-            if (it.node->lNext) {
-                it.node->lNext->lPrev = it.node->lPrev;
-                it.temp = it.node->lNext;
-            }
-            else lTail = it.node->lPrev;
-            
-            delete it.node;
-            it.node = it.temp;
+        // Если вставка в конец
+        if (it.node == nullptr) {
+            // Создаем итератор и ищем конец списка
+            iterator i(Head);
+            for (i; i.node->next != nullptr; i++);
+            // Привязываем новый узел к концу списка
+            i.node->next = temp;
+            return;
         }
-        return result;   
+        // Если есть предыдущий узел
+        if (it.prev != nullptr) it.prev->next = temp;
+        // Связываем новый узел с узлом по итератору
+        temp->next = it.node;
+        // Если вставка была в начало списка
+        if (it.node == Head) Head = temp;
     }
 
-    void erase(iterator it) {
-        pop(it);
+    // Удалить элемент по итератору
+    void erase(const iterator& it) {
+        // Если удаление происходит из начала списка
+        if (it.node == Head) Head = Head->next;
+        // Если удаление происходит с конца списка
+        else if (it.node == nullptr) {
+            // Создаем итератор и ищем конец списка
+            iterator i(Head);
+            for (i; i.node->next != nullptr; i++);
+            // Для предпоследнего узла в списке удаляется связь
+            i.prev->next = nullptr;
+            // Удаление последнего узла в списке
+            delete i.node;
+            return;
+        }
+        // Связываем предыдущий узел со следующим
+        else it.prev->next = it.node->next;
+        // Удаляем высвободившийся узел
+        delete it.node;
     }
 
+    // Получить значение узла по итератору
+    myType read(const iterator& it) {
+        // Если итератор указывает на существующий узел
+        if (it.node != nullptr) return it.node->data;
+        // Создаем итератор и ищем конец списка
+        iterator i(Head);
+        for (i; i.node->next != nullptr; i++);
+        // Возвращаем значение узла на конце списка
+        return i.node->data;
+    }
+    
     // Возвращает итератор на первый узел списка
     iterator begin() {
-        iterator iTemp(lHead);
-        return iTemp;
-    }
-
-    // Возвращает итератор на последний узел списка
-    iterator rbegin() {
-        iterator iTemp(lTail);
-        return iTemp;
+        iterator temp(Head);
+        return temp;
     }
 
     // Возвращает итератор несуществующего узла списка
     iterator end() {
-        iterator iTemp(0, lTail);
-        return iTemp;
-    }
-
-    // Возвращает итератор несуществующего узла списка
-    iterator rend() {
-        iterator iTemp(0, lHead);
-        return iTemp;
+        iterator temp(nullptr);
+        return temp;
     }
 };

@@ -9,15 +9,14 @@ int main() {
     
     list.insert(list.end(), 2);
     list.insert(list.end(), 4);
-    list.insert(list.end()--, 3);
     list.insert(list.begin(), 1);
 
     cout << "List is:" << endl;
     for (auto it = list.begin(); it != list.end(); it++)
         cout << "-> " << *it << endl;
 
-    auto i = list.begin() + 2;
-    cout << "Pop is " << list.pop(i) << endl;
+    list.erase(list.begin());
+    //cout << "Pop is " << list.pop(i) << endl;
 
     cout << "List is:" << endl;
     for (auto it = list.begin(); it != list.end(); it++)
