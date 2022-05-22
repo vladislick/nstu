@@ -55,6 +55,18 @@ class BST {
 			BST_LTR(t->pright, k + 1);
 		}
 
+		//Длина внешнего пути дерева
+		int BST_LEN(bNode* t, bool dir, int level) {
+			if (t ==NULL) { 
+				return level - 1;
+			}
+			if (dir) {
+				return BST_LEN(t->pleft, dir, level+1);
+			} else {
+				return BST_LEN(t->pright, dir, level+1);
+			}
+		}
+
 		//Обход дерева
 		void BST_DELETE_LTR(bNode* t) {
 			if (t == NULL) {
@@ -92,7 +104,63 @@ class BST {
 			BST_IN(t, original->Data, original->key);
 			BST_COPY(t, original->pleft);
 			BST_COPY(t, original->pright);
-		}		
+		}	
+
+		//Поиск замещающего узла
+		bNode* Del(bNode* pt, bNode* p0) {
+			if (pt->pleft != NULL) {
+				pt->pleft = Del(pt->pleft, p0);
+				return pt;
+			}
+			p0->key = pt->key;
+			p0->Data = pt->Data;
+			bNode* temp = pt->pright;
+			delete pt;
+			return temp;
+		} 
+
+		//Удаление узла по ключу key-искомый, pt-текущий, del-флаг
+		bNode* BST_DEl( bKey key, bNode* pt, bool &del) {
+			//Узла не существует
+			if (pt == NULL) {
+				del = false;
+				return NULL;
+			} 
+			//Искомый меньше текущего идем влево
+			if (pt->key > key) {
+				pt->pleft = BST_DEl(key, pt->pleft, del);
+				return pt;
+			}
+			//Искомый больше текущего идем вправо
+			if (pt->key < key) {
+				pt->pright = BST_DEl(key, pt->pright, del);
+				return pt;
+			}
+			//У узла нет потомков-удаляем
+			if (pt->pleft ==  NULL && pt->pright == NULL) {
+				delete pt;
+				del = true;
+				return NULL;
+			} 
+			//У узла только левый потомок, запоминаем связь с левым потомком, удаляем узел.
+			if (pt->pright ==  NULL) {
+				bNode* temp = pt->pleft;
+				delete pt;
+				del = true;
+				return temp;
+			}
+			//У узла только правый потомок, запоминаем связь с правым потомком, удаляем узел.
+			if (pt->pleft ==  NULL) {
+				bNode* temp = pt->pright;
+				delete pt;
+				del = true;
+				return temp;
+			}
+			//У узла оба потомка, ищем замещающий узел
+			pt->pright = Del(pt->pright, pt);
+			del = true;
+			return pt;
+		}	
 	
 	public:
 
@@ -110,6 +178,12 @@ class BST {
 			ROOT = NULL;
 		}
 
+		const BST& operator=(const BST& tree) {
+			BST_DELETE_LTR(ROOT);
+			ROOT = NULL;
+			BST_COPY(&ROOT, tree.ROOT);
+		}
+
 		bool insert(const bType &data, const bKey &key) {
 			return BST_IN(&ROOT, data, key);
 		}
@@ -118,69 +192,17 @@ class BST {
 			BST_LTR(ROOT);
 		}
 
-		//Поиск по ключу - обертка
 		bool search (const bKey &key, bType &data) {
 			return BST_SEARCH(ROOT, key, data);
 		}
 
+		bool erase(bKey key) {
+			bool del;
+			BST_DEl(key, ROOT, del);
+			return del;
+		}
 
-	
-	/*//Поиск замещающего узла
-	bNode* Del(bNode* pt, bNode* p0) {
-		if (pt != NULL) {
-			pt -> pleft = Del(pt->pleft, p0);
-			return pt;
-		}
-		p0->key = pt->key;
-		p0->data = pt->data;
-		temp = pt->pright;
-		delete pt;
-		return temp;
-	} 
-	//Удаление узла по ключу key-искомый, pt-текущий, del-флаг
-	bNode* BST_DEl( bKey key, bNode* pt, bool &del) {
-		//Узла не существует
-		if (pt == NULL) {
-			del = false;
-			return NULL;
-		} 
-		//Искомый меньше текущего идем влево
-		if (pt->key > key) {
-			pt->pleft = BST_DEl(key, pt->pleft, &delet);
-			del = delet;
-			return pt;
-		}
-		//Искомый больше текущего идем вправо
-		if ((pt->key < key) {
-			pt->pright = BST_DEl(key, pt->pright, &delet);
-			del = delet;
-			return pt;
-		}
-		//У узла нет потомков-удаляем
-		if (pt->pleft ==  NULL && pt->pright == NULL) {
-			delete pt;
-			del = true;
-			return NULL;
-		} 
-		//У узла только левый потомок, запоминаем связь с левым потомком, удаляем узел.
-		if (pt->pright ==  NULL) {
-			temp = pt->pleft;
-			delete pt;
-			del = true;
-			return NULL;
-		}
-		//У узла только правый потомок, запоминаем связь с правым потомком, удаляем узел.
-		if (pt->pleft ==  NULL) {
-			temp = pt->pright;
-			delete pt;
-			del = true;
-			return NULL;
-		}
-		//У узла оба потомка, ищем замещающий узел
-		pt->pright = Del(pt->pright, pt);
-		del = true;
-		return pt;
-	}*/
-	
-	
+		int length() {
+			return BST_LEN(ROOT, 0, 0) + BST_LEN(ROOT, 1, 0);
+		}	
 };

@@ -56,6 +56,24 @@ public:
         pRoot = nullptr;
     }
 
+    // Деструктор класса с методом обхода TLR
+    ~ctree() {
+        // Обходим дерево, удаляя каждый узел
+        TLR(pRoot, &ctree<Tdata,Tkey>::destructor_Func);
+    } 
+
+    // Втавить новый узел в дерево
+    void insert(const Tkey& KEY, const Tdata &DATA) {
+        // Создаем временный указатель на узел и кладем адрес начала дерева
+        Node *temp = pRoot;
+        // В цикле проходим по дереву
+        while(temp != nullptr) {
+            if (temp->key > KEY) temp = temp->pLeft;
+            else if (temp->key < KEY) temp = temp->pRight;
+            else break;
+        }
+    }
+
     // Конструктор копирования с обходом TLR
     ctree(const ctree& tree) {
         // Если копируемое дерево пустое, то выходим
@@ -98,7 +116,7 @@ public:
     }
 
     // Поиск нужного узла
-    bool search(Tkey KEY, Tdata &DATA) {
+    bool search(const Tkey& KEY, Tdata &DATA) {
         Node *temp = pRoot;
         while(temp != nullptr) {
             if (temp->key > KEY) temp = temp->pLeft;
@@ -111,10 +129,4 @@ public:
         return false;
     }
     
-
-    // Деструктор класса с методом обхода TLR
-    ~ctree() {
-        // Обходим дерево, удаляя каждый узел
-        TLR(pRoot, &ctree<Tdata,Tkey>::destructor_Func);
-    } 
 };
