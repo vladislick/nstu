@@ -1,81 +1,4 @@
 #include <stdio.h>
-#include <unistd.h> 
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-
-// Отправить сообщение message на адрес address и порт port
-int sendMessage(const char* message, int bytes, int* udp_socket, const char* address, int port) {
-    // Объявляем структуру с адресом назначения
-    struct sockaddr_in dst_addr;
-    // Очищаем эту структуру
-    memset(&dst_addr, 0, sizeof(dst_addr));
-	dst_addr.sin_family = AF_INET;
-	dst_addr.sin_port = htons(port);
-	dst_addr.sin_addr.s_addr = inet_addr(address);
-    // Пробуем отправить пакет
-    if (sendto(*udp_socket, message, bytes, 0, (const struct sockaddr *) &dst_addr, sizeof(dst_addr)) < 0)
-        return -2;
-    else
-        return bytes;
-}
-
-// Принимает сообщение в message с адреса address и порта port
-int recvMessage(char* message, int bytes, int* udp_socket, const char* address, int port) {
-    // Объявляем структуру с адресом назначения
-    struct sockaddr_in src_addr;
-    int structlen = sizeof(struct sockaddr_in); 
-    // Очищаем эту структуру
-    memset(&src_addr, 0, sizeof(src_addr));
-	src_addr.sin_family = AF_INET;
-	src_addr.sin_port = htons(port);
-	src_addr.sin_addr.s_addr = inet_addr(address);
-    // Пробуем отправить пакет
-    if (recvfrom(*udp_socket, message, 82, 0, (struct sockaddr *) &src_addr, &structlen) < 0)
-        return -2;
-    else
-        return bytes;
-}
-
-// Создать пакет для отправки
-void createPackage(char* package) {
-    // Очистка пакета
-	memset(package, 0, 82);
-    // Заполнение полей
-    package[0] = 129;
-	package[1] = 17;
-	package[2] = 1;
-	package[3] = 3;
-    sprintf(&package[4],"Vdovin");
-    sprintf(&package[41],"");
-    sprintf(&package[61],"");
-
-    // Вычисление контрольной суммы
-	for (int i = 0; i < 81; i++) package[81] ^= package[i];
-}
-
-int main() {
-    // Формируем сообщение для отправки
-    char package[82];
-    createPackage(package);
-    // Создаем сокет
-    int udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
-    // Если сокет не удалось создать, вернуть -1
-    if (udp_socket < 0) return -1;
-    // Отправляем сообщения
-    printf("Result code: %d\n", sendMessage(package, 82, &udp_socket, "127.0.0.1", 12345));
-    printf("Waiting for an answer from server... ");
-    sleep(1);
-    if (recvMessage(package, 82, &udp_socket, "127.0.0.1", 12345) > 0)
-        printf("received: %s.\n", package);
-    else
-        printf("cannot receive an answer.\n");
-    return 0;
-}
-
-/*
-#include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -117,7 +40,7 @@ int main() {
 	struct sockaddr_in dest_addr;
 	dest_addr.sin_family = AF_INET;
 	dest_addr.sin_port = htons(12345);
-	dest_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	dest_addr.sin_addr.s_addr = inet_addr("192.168.2.173");
 
     // Создаем пакет для отправки
 	unsigned char package[81];
@@ -142,4 +65,4 @@ int main() {
 	close(udp_socket);
 
 	return 0;
-} */
+}
