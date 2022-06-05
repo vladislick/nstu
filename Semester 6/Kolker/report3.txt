@@ -1,0 +1,33 @@
+Федеральное государственное бюджетное образовательное учреждение высшего профессионального образования Новосибирский государственный технический университет
+
+Название курса: «Информационные сети и коммуникации».
+Название работы: «Лабораторная работа 3».
+Название группы: АА-96.
+Студент: Вдовин Владислав Андреевич.
+Преподаватель: Колкер Алексей Борисович.
+Дата 29.03.2022.
+Цель работы: Научиться работать с консольными сетевыми утилитами в сетях IPV4 и IPV6. Научиться работать с сервисами сбора и обработки данных с IoT устройств.
+Информация о ходе работы: Написан скрипт, который при помощи утилиты vmstat собирает данные о ресурсах ПК и отправляет их в канал на сервер ThingSpeak. Содержание этого скрипта:
+cpuUser=$(vmstat | awk '(NR==3){print $13}')
+cpuSystem=$(vmstat | awk '(NR==3){print $14}')
+buff=$(vmstat | awk '(NR==3){print $5}')
+cache=$(vmstat | awk '(NR==3){print $6}')
+swap=$(vmstat | awk '(NR==3){print $3}')
+ram=$(( $buff + $cache ))
+cpu=$(( $cpuUser + $cpuSystem ))
+while true; do 
+	echo "CPU: $cpu, RAM: $ram, Swap: $swap"
+	wget "https://api.thingspeak.com/update?api_key=GEXDY2TJWRB13PZ5&field1=$swap"
+	sleep 20;
+	wget "https://api.thingspeak.com/update?api_key=GEXDY2TJWRB13PZ5&field2=$cpu"
+	sleep 20;	
+	wget "https://api.thingspeak.com/update?api_key=GEXDY2TJWRB13PZ5&field3=$ram"
+	if [[ $? -ne 0 ]]; then
+		echo "Cannot send data to the server"
+	fi
+	sleep 20;
+done
+
+Выводы о работе: Научился работать с сервисами сбора и обработки данных с IoT устройств.
+ 
+Приложение: файл lab3.zip 451 bytes, 29 мар 2022
