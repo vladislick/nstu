@@ -1,0 +1,203 @@
+Федеральное государственное бюджетное образовательное учреждение высшего профессионального образования Новосибирский государственный технический университет
+
+Название курса: «Информационные сети и коммуникации».
+Название работы: «Лабораторная работа 4 (РГЗ)».
+Название группы: АА-96.
+Студент: Вдовин Владислав Андреевич.
+Преподаватель: Колкер Алексей Борисович.
+Дата 05.06.2022.
+Цель работы: знакомство с методами обмена данными при помощи классических сокетов. Разработка приложения, способного обмениваться данными по UDP в сетях IPv4 и IPv6. Знакомство с программированием на языке Си в системе Linux.
+
+Ход работы:
+В ходе данной работы было написано два приложения на языке Си, которые являются UDP-клиентами, только одно из них работает в сетях IPv4, а другое в IPv6.
+Рассмотрим эти приложения со стороны кода:
+
+
+
+    1. IPv4 - файл "lab4.c":
+/*/// Сначала идёт стандартное подключение необходимых библиотек. ///*/
+#include <stdio.h> // Стандартная библиотека Си, содержит, например, printf(), scanf()
+#include <sys/types.h> // Библиотека с типами данных (in_addr_t, size_t и т.д.)
+#include <sys/socket.h> // Библиотека с описанием сокетов их их типов данных 
+#include <unistd.h> // Библиотека, в которой содержится sleep() и close()
+#include <arpa/inet.h> // Библиотека, которая содержит функции интернет адресов
+
+/*/// После этого объявляется функция, которая будет формировать пакет с ///*/
+/*/// заданными полями и значениями (для удобства)                       ///*/
+// Создать пакет для отправки
+void createPackage(char* package) {
+    // Очистка пакета
+    for (int i = 0; i < 82; i++) package[i] = 0;
+    // Заполнение полей
+    package[0] = 129;
+    package[1] = 17;
+    package[2] = 1;
+    package[3] = 4;
+    // Запись бригады в пакет
+    sprintf(&package[4],"Vdovin");
+    sprintf(&package[41],"");
+    sprintf(&package[61],"");
+    // Вычисление контрольной суммы
+    for (int i = 0; i < 81; i++) package[81] ^= package[i];
+}
+
+/*/// Далее объявляется стандартная функция main(), в которой сначала    ///*/
+/*/// создаётся UDP-сокет с помощью функции socket(), далее формируется  ///*/
+/*/// через структуру sockaddr_in интернет адрес сервера и его порт,     ///*/
+/*/// затем формируется пакет для отправки и выполняется попытка         ///*/
+/*/// отправки этого пакета на сервер, после чего происходит ожидание    ///*/
+/*/// ответа от сервера с помощью recvfrom() и, если ответ пришёл, то    ///*/
+/*/// он выводится на экран и программа завершается, закрывая сокет.     ///*/
+int main() {
+    // Дескриптор сокета
+	int udp_socket;
+	// Переменная для хранения размера структуры с адресом сервера
+    int structlen = sizeof(struct sockaddr_in); 
+
+    // Создание сокета
+	if ((udp_socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+	    // Если не удалось создать UDP-сокет 
+		printf("Cannot create socket\n");
+        return -1;
+	}
+
+    // Создание адреса сервера - тип домена: интернет, порт и адрес
+	struct sockaddr_in dest_addr;
+	dest_addr.sin_family = AF_INET;
+	dest_addr.sin_port = htons(12345);
+	dest_addr.sin_addr.s_addr = inet_addr("192.168.2.173");
+
+    // Создаем пакет для отправки
+	unsigned char package[81];
+    createPackage(package);
+
+    // Попытка отправки пакета серверу
+    printf("Trying to send a package... ");
+	if (sendto(udp_socket, (const char *)package, 82, 0, (const struct sockaddr *) &dest_addr, sizeof(dest_addr)) == -1) {
+        printf("Error.\n");
+        return -2;
+    } else printf("Package sent.\n");
+    
+    // Попытка принять ответ от сервера
+	printf("Trying to receive a package from the server...");
+	// Ожидание 1с
+	sleep(1);
+	// Приём пакета (висит пока не придет)
+    int package_size = recvfrom(udp_socket, (char *)package, 82, 0, (struct sockaddr *) &dest_addr, &structlen);
+    // Если хоть сколько-то байт принято
+	if (package_size > 0 || package_size == 0) printf("Received.\n");
+    else {
+        printf("Error.\n");
+    }
+    
+    // Выводим ответ серверва
+    printf("Server answer is: %s\n", package);
+    // Закрываем сокет
+	close(udp_socket);
+	return 0;
+}
+
+
+
+    2. IPv6 - файл "lab4_IPv6.c":
+/*/// Сначала идёт стандартное подключение необходимых библиотек. ///*/
+#include <stdio.h> // Стандартная библиотека Си, содержит, например, printf(), scanf()
+#include <sys/types.h> // Библиотека с типами данных (in_addr_t, size_t и т.д.)
+#include <sys/socket.h> // Библиотека с описанием сокетов их их типов данных 
+#include <unistd.h> // Библиотека, в которой содержится sleep() и close()
+#include <arpa/inet.h> // Библиотека, которая содержит функции интернет адресов
+#include <string.h> // Библиотека, в которой есть нужная функция memset()
+
+/*/// Затем идёт описание функции отправки уже готового сообщения. Сокет должен быть привязан. ///*/
+// Отправить сообщение message на адрес address и порт port
+int sendMessage6(const char* message, int bytes, int* udp_socket, const char* address, int port) {
+    // Объявляем структуру с адресом назначения
+    struct sockaddr_in6 dst_addr;
+    // Очищаем эту структуру
+    memset(&dst_addr, 0, sizeof(dst_addr));
+    // Заполняем ее данными
+    dst_addr.sin6_family = AF_INET6;
+    dst_addr.sin6_port = htons(port);
+    // Пробуем преобразовать адрес, если не получилось, возвратить ноль
+    if (inet_pton(AF_INET6, address, &dst_addr.sin6_addr) <= 0)
+        return 0;
+    // Пробуем отправить пакет
+    if (sendto(*udp_socket, message, bytes, 0, (struct sockaddr *)&dst_addr, sizeof(dst_addr)) < 0)
+        return -2;
+    else
+        return bytes;
+}
+
+/*/// После этого идёт описание функции принятия сообщения. Сокет должен быть привязан. ///*/
+// Принимает сообщение в message с адреса address и порта port
+int recvMessage6(char* message, int bytes, int* udp_socket, const char* address, int port) {
+    // Объявляем структуру с адресом назначения
+    struct sockaddr_in6 src_addr;
+    // Переменная с размером структуры адреса
+    int structlen = sizeof(struct sockaddr_in); 
+    // Очищаем эту структуру
+    memset(&src_addr, 0, sizeof(src_addr));
+	src_addr.sin6_family = AF_INET6;
+	src_addr.sin6_port = htons(port);
+	// Пробуем преобразовать адрес, если не получилось, возвратить ноль
+    if (inet_pton(AF_INET6, address, &src_addr.sin6_addr) <= 0)
+        return 0;
+    // Пробуем принять пакет
+    if (recvfrom(*udp_socket, message, 82, 0, (struct sockaddr *) &src_addr, &structlen) < 0)
+        return -2;
+    else
+        return bytes;
+}
+
+/*/// Описание функции формирования пакета ///*/
+// Создать пакет для отправки
+void createPackage(char* package) {
+    // Очистка пакета
+	memset(package, 0, 82);
+    // Заполнение полей
+    package[0] = 129;
+    package[1] = 17;
+    package[2] = 1;
+    package[3] = 4;
+    // Запись бригады в пакет
+    sprintf(&package[4],"Vdovin");
+    sprintf(&package[41],"");
+    sprintf(&package[61],"");
+    // Вычисление контрольной суммы
+    for (int i = 0; i < 81; i++) package[81] ^= package[i];
+}
+
+/*/// Далее объявляется стандартная функция main(), в которой сначала    ///*/
+/*/// формируется пакет для отправки, затем создаётся UDP-сокет, после   ///*/
+/*/// чего предпринимается попытка отправки пакета на сервер, а затем    ///*/
+/*/// через 1 секунду приложение ожидает ответа от сервера и, если он    ///*/
+/*/// приходит, этот ответ выводится на экран,     ///*/
+/*/// ответа от сервера с помощью recvfrom() и, если ответ пришёл, то    ///*/
+/*/// он выводится на экран и программа завершается, закрывая сокет.     ///*/
+int main() {
+    // Формируем сообщение для отправки
+    char package[82];
+    createPackage(package);
+    // Создаем сокет
+    int udp_socket = socket(AF_INET6, SOCK_DGRAM, 0);
+    // Если сокет не удалось создать, вернуть -1
+    if (udp_socket < 0) return -1;
+    // Отправляем сообщениe сами себе
+    printf("Result code: %d\n", sendMessage6(package, 82, &udp_socket, "::1", 12345));
+    printf("Waiting for an answer from server... ");
+    sleep(1);
+    // Ожидание ответа от сервера
+    if (recvMessage6(package, 82, &udp_socket, "::1", 12345) > 0)
+        // Выводим ответ серверва
+        printf("received: %s.\n", package);
+    else
+        // Выводим сообщение об ошибке
+        printf("cannot receive an answer.\n");
+    // Закрываем сокет
+	close(udp_socket);
+    return 0;
+}
+
+Выводы о работе: Ознакомился с методами обмена данными при помощи классических сокетов. Разработал приложения, которые способны обмениваться данными по UDP в сетях IPv4 и IPv6. Также познакомился с программированием на языке Си в системе Linux.
+ 
+Приложение: файл lab4.zip, 2 250 bytes, 5 июн 2022.

@@ -1,13 +1,8 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <stdlib.h>
 #include <unistd.h> 
-#include <netinet/in.h>
-#include <termios.h>
-#include <fcntl.h>
-#include <string.h>
-#include <arpa/inet.h>
+//#include <arpa/inet.h>
 
 // Создать пакет для отправки
 void createPackage(char* package) {
