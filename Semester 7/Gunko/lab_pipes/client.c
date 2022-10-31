@@ -35,6 +35,11 @@ int main () {
     // Пробуем открыть канал для чтения
     readfd = open(FIFO2, O_RDONLY, 0);
     
+	if (writefd < 0 || readfd < 0) {
+		printf("Cannot open pipe(s)\n");
+		return -1;
+	}
+
     while(1) {
         // Получаем имя файла
         printf("Enter the filename: ");
