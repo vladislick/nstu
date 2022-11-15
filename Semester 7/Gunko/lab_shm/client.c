@@ -37,7 +37,7 @@ struct msg_struct {
 int main () {
 	// =============== ПЕРЕМЕННЫЕ СЕМАФОРОВ И ПАМЯТИ ===============
 	// Создаём дескрипторы семафоров
-    sem_t *sem_client, *sem_server;
+	sem_t *sem_client, *sem_server;
 	// Дескриптор разделяемой памяти
 	int fd;
 	// Указатель на разделяемую память
@@ -48,9 +48,9 @@ int main () {
 	struct msg_struct msg;
 	// Буфер для получения символа	
 	char buff[MAXLINE];
-	
+
 	// Открываем семафор клиента, если не существует, создаём
-	sem_client = sem_open(SEM_CLIENT, SEM_CLIENT_FLAGS, SEM_FILE_MODE, 0);
+	sem_client = sem_open(SEM_CLIENT, SEM_CLIENT_FLAGS,SEM_FILE_MODE, 0);
 	if (sem_client == SEM_FAILED) {
 		printf("ERROR: Cannot open client's semaphore: %s.\n", strerror(errno));
 		exit(-1);
@@ -80,28 +80,28 @@ int main () {
 		exit(-1);
 	}
 
-    while(1) {
-        // Получаем имя файла
-        printf("Enter the filename (\'exit\' to exit, \'shutdown\' to exit and shut down the server): ");
-        fgets(msg.filename, MAXLINE, stdin);
-        // Заменим последний символ на конец строки
-        msg.filename[strlen(msg.filename) - 1] = '\0';
+	while(1) {
+		// Получаем имя файла
+		printf("Enter the filename (\'exit\' to exit, \'shutdown\' to exit and shut down the server): ");
+		fgets(msg.filename, MAXLINE, stdin);
+		// Заменим последний символ на конец строки
+		msg.filename[strlen(msg.filename) - 1] = '\0';
 		// Если пришла команда выхода
 		if (!strcmp(msg.filename, "exit")) break;
 
-        // Получаем символ для обработки
-        if (strcmp(msg.filename, "shutdown")) do {
-            printf("Enter the symbol: ");
-            fgets(buff, MAXLINE, stdin);
-            buff[strlen(buff) - 1] = '\0';
-        } while(strlen(buff) != 1);
-        
-        // Получаем реальный символ
-        msg.symbol = buff[0];
+		// Получаем символ для обработки
+		if (strcmp(msg.filename, "shutdown")) do {
+			printf("Enter the symbol: ");
+			fgets(buff, MAXLINE, stdin);
+			buff[strlen(buff) - 1] = '\0';
+		} while(strlen(buff) != 1);
+
+		// Получаем реальный символ
+		msg.symbol = buff[0];
 
 		// Очищаем память
 		memset(shm_ptr, 0, sizeof(struct msg_struct));
-        // Отправляем сообщение серверу в разделяему память
+		// Отправляем сообщение серверу в разделяему память
 		*shm_ptr = msg;
 
 		// Говорим серверу, что можно забирать сообщение
@@ -112,22 +112,22 @@ int main () {
 
 		// Говорим, что всё ок
 		printf("Message sent successfully.\n");
-		
+
 		// Если необходимо завершить работу
 		if (!strcmp(msg.filename, "shutdown")) break;
 
 		// Говорим, что ждём сервер
 		printf("Wait for the server...\n");
 
-        // Ожидаем ответа от сервера
-        if (sem_wait(sem_server) < 0 ) {
+		// Ожидаем ответа от сервера
+		if (sem_wait(sem_server) < 0 ) {
 			printf("ERROR: Cannot wait for the server's semaphore: %s.\n\n", strerror(errno));
 			continue;
 		}
 
 		// Выводим на экран ответ сервера
 		printf("Answer from the server: \n%s.\n\n", shm_ptr->filename);
-    }
+	}
 
 	// Закрываем дескрипторы семафоров
 	sem_close(sem_client);	

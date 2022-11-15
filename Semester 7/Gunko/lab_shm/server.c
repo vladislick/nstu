@@ -54,13 +54,13 @@ int display(sem_t* sem, struct msg_struct* msg, const char* str) {
 int main(int argc, char** argv) {
 	// =============== ПЕРЕМЕННЫЕ СЕМАФОРОВ И ПАМЯТИ ===============
 	// Создаём дескрипторы семафоров
-    sem_t *sem_client, *sem_server;
+	sem_t *sem_client, *sem_server;
 	// Указатель на разделяемую память
 	struct msg_struct* shm_ptr;
 	// Дескриптор разделяемой памяти
 	int fd;
 
-    // =============== ПЕРЕМЕННЫЕ ОБРАБОТКИ ФАЙЛОВ  ===============
+	// =============== ПЕРЕМЕННЫЕ ОБРАБОТКИ ФАЙЛОВ  ===============
 	// Дескрипторы файлов 
 	int inputFile, outputFile;
 	// Имя выходного файла (или путь к нему)
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
 	void* libfiles;
 	// Прототип функции из библиотеки
 	int (*fileHandler)(int input, int output, char character);
-	
+
 	// Попытка загрузить библиотеку
 	libfiles = dlopen("./libfiles.so", RTLD_LAZY);
 	if (libfiles == NULL) {
@@ -87,8 +87,8 @@ int main(int argc, char** argv) {
 		printf("ERROR: Cannot find function in shared library.\n");
 		exit(-1);
 	}
-	
-    // Открываем семафор клиента, если не существует, создаём
+
+	// Открываем семафор клиента, если не существует, создаём
 	sem_client = sem_open(SEM_CLIENT, SEM_CLIENT_FLAGS, SEM_FILE_MODE, 0);
 	if (sem_client == SEM_FAILED) {
 		printf("ERROR: Cannot open client's semaphore: %s.\n", strerror(errno));
@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
 		printf("ERROR: Cannot open shared memory: %s.\n", strerror(errno));
 		exit(-1);
 	}
-	
+
 	// Обозначаем длину разделяемой памяти
 	ftruncate(fd, sizeof(struct msg_struct));
 
@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
 			printf("ERROR: Cannot wait from client's semaphore: %s.\n", strerror(errno));
 			continue;
 		}
-		
+
 		// Если пришло сообщение о завершении работы
 		if (!strcmp(shm_ptr->filename, "shutdown")) break;
 
@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
 			display(sem_server, shm_ptr, buff);
 			continue;
 		}
-		
+
 		// Закрываем выходной файл
 		if (close (outputFile) == -1 ) {
 			sprintf(buff, "ERROR: Cannot close output file: %s", strerror(errno));
@@ -183,17 +183,17 @@ int main(int argc, char** argv) {
 	// Закрываем дескрипторы семафоров
 	sem_close(sem_client);
 	sem_close(sem_server);
-	
+
 	// Удаляем семафоры
 	sem_unlink(SEM_CLIENT);
 	sem_unlink(SEM_SERVER);
-	
+
 	// Закрываем дескриптор динамической библиотеки
 	dlclose(libfiles);
-	
+
 	// Закрываем дескриптор разделяемой памяти
 	close(fd);
-	
+
 	// Удаляем сегмент разделяемой памяти
 	shm_unlink(SHM);
 
