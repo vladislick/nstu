@@ -22,13 +22,9 @@ struct msg_struct {
 
 // Проверка корректности введенного порта в виде строки
 int portCheck(const char* port) {
-	// Количество цифр
-	int digits = 0;	
 	// Проход по всем символам
-	for (int i = 0; port[i] != '\0'; i++) {
+	for (int i = 0; port[i] != '\0'; i++)
 		if (port[i] > 57 || port[i] < 48) return 0;
-		else digits++;
-	}
 	// Проверка численного значения
 	if (atoi(port) < 65536) return 1;
 	return 0;
