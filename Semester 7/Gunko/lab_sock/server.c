@@ -2,30 +2,15 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <fcntl.h>
-#include <semaphore.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <errno.h>
 #include <string.h>
 #include <dlfcn.h>
-
-// Имя семафора, которым управляет клиент
-#define SEM_CLIENT "/client"
-// Имя семафора, которым управляет сервер
-#define SEM_SERVER "/server"
-// Имя области разделяемой памяти
-#define SHM "/shared_memory"
-// Права доступа к семафорам
-#define SEM_FILE_MODE S_IRUSR | S_IWUSR
-// Права доступа к разделяемой памяти
-#define SHM_FILE_MODE S_IRUSR | S_IWUSR
-// Флаги для открытия семафора сервера
-#define SEM_SERVER_FLAGS O_RDWR | O_CREAT
-// Флаги для открытия семафора клиента
-#define SEM_CLIENT_FLAGS O_RDWR | O_CREAT
-// Флаги для разделяемой памяти
-#define SHM_FLAGS O_RDWR | O_CREAT
 
 #define MAXLINE 256
 
@@ -35,30 +20,47 @@ struct msg_struct {
 	char symbol;
 };
 
+// Проверка корректности введенного порта в виде строки
+int portCheck(const char* port) {
+	// Количество цифр
+	int digits = 0;	
+	// Проход по всем символам
+	for (int i = 0; port[i] != '\0'; i++) {
+		if (port[i] > 57 || port[i] < 48) return 0;
+		else digits++;
+	}
+	// Проверка численного значения
+	if (atoi(port) < 65536) return 1;
+	return 0;
+}
+
 // Отобразить текст str на экран и отправить его в разделяемую память msg, уведомив клиента семафором sem
-int display(sem_t* sem, struct msg_struct* msg, const char* str) {
+int display(int sock, struct sockaddr_in* addr, struct msg_struct* msg, const char* str) {
 	// Выводим на экран
-	printf("%s.\n\n", str);
+	printf("%s.\n", str);
 	// Очищаем память
 	memset(msg, 0, sizeof(struct msg_struct));
 	// Копируем строку
 	strcpy(msg->filename, str);
 	// Говорим клиенту, что можно забирать сообщение
-	if (sem_post(sem) < 0) {
-		printf("ERROR: Cannot touch server's semaphore: %s.\n", strerror(errno));
+	if (sendto(sock, msg, sizeof(struct msg_struct), 0,(struct sockaddr *)addr, sizeof(struct sockaddr_in)) < 0) {
+		printf("ERROR: Cannot send message to client.\n\n");
 		return -1;
 	}
+	printf("\n");
 	return 0;
 }
 
 int main(int argc, char** argv) {
-	// =============== ПЕРЕМЕННЫЕ СЕМАФОРОВ И ПАМЯТИ ===============
-	// Создаём дескрипторы семафоров
-	sem_t *sem_client, *sem_server;
+	// =============== ПЕРЕМЕННЫЕ СОКЕТОВ ===============
+	// Дескриптор сокета
+	int sock;
+	// Структура адреса сервера 
+	struct sockaddr_in server_addr, client_addr;
+	// Размер структуры адреса
+	unsigned int structlen = sizeof(struct sockaddr_in); 
 	// Указатель на разделяемую память
-	struct msg_struct* shm_ptr;
-	// Дескриптор разделяемой памяти
-	int fd;
+	struct msg_struct msg;
 
 	// =============== ПЕРЕМЕННЫЕ ОБРАБОТКИ ФАЙЛОВ  ===============
 	// Дескрипторы файлов 
@@ -88,34 +90,34 @@ int main(int argc, char** argv) {
 		exit(-1);
 	}
 
-	// Открываем семафор клиента, если не существует, создаём
-	sem_client = sem_open(SEM_CLIENT, SEM_CLIENT_FLAGS, SEM_FILE_MODE, 0);
-	if (sem_client == SEM_FAILED) {
-		printf("ERROR: Cannot open client's semaphore: %s.\n", strerror(errno));
+	// Создание сокета	
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sock < 0) {
+		printf("ERROR: Cannot create socket.\n");
 		exit(-1);
 	}
 
-	// Открываем семафор сервера, если не существует, создаём
-	sem_server = sem_open(SEM_SERVER, SEM_SERVER_FLAGS, SEM_FILE_MODE, 0);
-	if (sem_server == SEM_FAILED) {
-		printf("ERROR: Cannot open server's semaphore: %s.\n", strerror(errno));
-		exit(-1);
+	// Создание адреса
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = 0;
+	server_addr.sin_addr.s_addr = INADDR_ANY;
+
+	 // Узнаем порт сервера из аргумента
+	for (int i = 1; i < argc; i++) 
+		if (portCheck(argv[i])) server_addr.sin_port = htons(atoi(argv[i]));
+	
+	// Если не удалось определить порт из аргуметов
+	while (server_addr.sin_port == 0) {
+		memset(buff, '\0', MAXLINE);
+		printf("Enter server port: ");
+		fgets(buff, MAXLINE, stdin);
+		buff[strlen(buff) - 1] = '\0';
+		if (portCheck(buff)) server_addr.sin_port = htons(atoi(buff)); 
 	}
 
-	// Открываем или создаём разделяемую память
-	fd = shm_open(SHM, SHM_FLAGS, SHM_FILE_MODE);
-	if (fd < 0) {
-		printf("ERROR: Cannot open shared memory: %s.\n", strerror(errno));
-		exit(-1);
-	}
-
-	// Обозначаем длину разделяемой памяти
-	ftruncate(fd, sizeof(struct msg_struct));
-
-	// Отображаем память в адресное пространство процесса
-	shm_ptr = mmap(NULL, sizeof(struct msg_struct), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	if (shm_ptr == MAP_FAILED) {
-		printf("ERROR: Cannot map shared memory: %s.\n", strerror(errno));
+	// Попытка забиндить сокет
+	if (bind(sock, (struct sockaddr *)&server_addr, sizeof(server_addr))) {
+		printf("ERROR: Cannot bind socket.\n");
 		exit(-1);
 	}
 
@@ -124,78 +126,67 @@ int main(int argc, char** argv) {
 
 	while(1) {
 		// Ожидание сообщения от клиента
-		if (sem_wait(sem_client) < 0) {
-			printf("ERROR: Cannot wait from client's semaphore: %s.\n", strerror(errno));
-			continue;
+		if (recvfrom(sock, &msg, sizeof(msg), 0, (struct sockaddr *) &client_addr, &structlen) < 0) {
+			printf("ERROR: Cannot receive client's message.\n");
+			exit(-1);
 		}
 
 		// Если пришло сообщение о завершении работы
-		if (!strcmp(shm_ptr->filename, "shutdown")) break;
+		if (!strcmp(msg.filename, "shutdown")) break;
 
 		// Выводим сообщение на экран
-		printf("Received message: File: <%s>, Symbol: <%c>.\n", shm_ptr->filename, shm_ptr->symbol);
+		printf("Received message from [%s]:\nFile: <%s>, Symbol: <%c>.\n", inet_ntoa(client_addr.sin_addr),msg.filename, msg.symbol);
 
 		// Открытие входного файла 
-		inputFile = open(shm_ptr->filename, O_RDONLY);
+		inputFile = open(msg.filename, O_RDONLY);
 		if (inputFile == -1) {
-			sprintf(buff, "ERROR: Cannot open input file \"%s\": %s", shm_ptr->filename, strerror(errno));
-			display(sem_server, shm_ptr, buff);
+			sprintf(buff, "ERROR: Cannot open input file \"%s\": %s", msg.filename, strerror(errno));
+			display(sock, &client_addr, &msg, buff);
 			continue;
 		}
 
 		// Находим имя выходного файла
-		strcpy(outputFileName, shm_ptr->filename);
+		strcpy(outputFileName, msg.filename);
 		strcat(outputFileName, ".modified");
 
 		// Создаем файл, если его нет, с правами rx-rx-rx-
 		outputFile = open (outputFileName, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 		if (outputFile == -1) {
 			sprintf(buff, "ERROR: Cannot open output file \"%s\": %s", outputFileName, strerror(errno));
-			display(sem_server, shm_ptr, buff);
+			display(sock, &client_addr, &msg, buff);
 			continue;
 		}
 
 		// Обработка файла
-		result = fileHandler(inputFile, outputFile, shm_ptr->symbol);
+		result = fileHandler(inputFile, outputFile, msg.symbol);
 
 		// Закрываем входной файл
 		if (close (inputFile) == -1 ) {
 			sprintf(buff, "ERROR: Cannot close input file: %s", strerror(errno));
-			display(sem_server, shm_ptr, buff);
+			display(sock, &client_addr, &msg, buff);
 			continue;
 		}
 
 		// Закрываем выходной файл
 		if (close (outputFile) == -1 ) {
 			sprintf(buff, "ERROR: Cannot close output file: %s", strerror(errno));
-			display(sem_server, shm_ptr, buff);
+			display(sock, &client_addr, &msg, buff);
 			continue;
 		}
 
 		// Отправляем ответ клиенту
 		sprintf(buff, "Done. %d changes saved in %s", result, outputFileName);
-		display(sem_server, shm_ptr, buff);
+		display(sock, &client_addr, &msg, buff);
 	}
 	
 	// Уведомляем, что пришла команда завершения работы
 	printf("Shutdown command received.\n");
 
-	// Закрываем дескрипторы семафоров
-	sem_close(sem_client);
-	sem_close(sem_server);
-
-	// Удаляем семафоры
-	sem_unlink(SEM_CLIENT);
-	sem_unlink(SEM_SERVER);
-
 	// Закрываем дескриптор динамической библиотеки
 	dlclose(libfiles);
 
-	// Закрываем дескриптор разделяемой памяти
-	close(fd);
-
-	// Удаляем сегмент разделяемой памяти
-	shm_unlink(SHM);
+	// Закрываем сокет
+	close(sock);
 
 	exit(0);
 }
