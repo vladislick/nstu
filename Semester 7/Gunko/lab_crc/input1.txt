@@ -1,0 +1,4 @@
+Super puper mega text.
+New string.
+A some other strings.
+Hello world!
