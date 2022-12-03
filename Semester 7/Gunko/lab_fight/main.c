@@ -10,12 +10,6 @@
 #include <dlfcn.h>
 #include <time.h>
 
-// Факториал числа n
-int f(int n) {
-	if (n == 0) return 1;
-	return n * f(n - 1);
-}
-
 // Структура типа массив
 typedef struct {
 	// Значение элементов массива
